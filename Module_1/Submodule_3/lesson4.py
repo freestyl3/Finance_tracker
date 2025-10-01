@@ -26,7 +26,7 @@ class Expense(BaseModel):
         description="Дата расхода, по умолчанию - сегодня"
     )
 
-@app.post('/expense')
+@app.post("/expense")
 def create_expense(expense: Expense):
     expenses.append(expense)
 

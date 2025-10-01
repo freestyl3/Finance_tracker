@@ -13,7 +13,7 @@ class Expense(BaseModel):
     description: str = None
     date: dt.date = Field(default_factory=dt.date.today)
 
-@app.post('/expense')
+@app.post("/expense")
 def create_expense(expense: Expense):
     expenses.append(expense)
 

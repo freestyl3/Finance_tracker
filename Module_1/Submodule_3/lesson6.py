@@ -7,18 +7,23 @@ from pydantic import BaseModel, Field, field_validator
 app = FastAPI()
 
 expenses = []
+incomes = []
 
-class Category(str, Enum):
+class ExpenseCategory(str, Enum):
     food = "Еда"
     transport = "Транспорт"
     fun = "Развлечения"
+
+class IncomeCategory(str, Enum):
+    salary = "Зарплата"
+    gifts = "Подарки"
 
 class Expense(BaseModel):
     amount: float = Field(
         gt=0,
         description="Сумма должна быть положительным числом"
     )
-    category: Category = Field(
+    category: ExpenseCategory = Field(
         max_length=50,
         description="Название категории, максимум 50 символов"
     )
@@ -39,6 +44,12 @@ class Expense(BaseModel):
         if v < dt.date(2000, 1, 1):
             raise ValueError("Дата не может быть раньше 2000 года")
         return v
+    
+class Income(Expense):
+    category: IncomeCategory = Field(
+        max_length=50,
+        description="Название категории, максимум 50 символов"
+    )
 
 @app.post("/expense")
 def create_expense(expense: Expense):
@@ -47,4 +58,13 @@ def create_expense(expense: Expense):
     return {
         "message": "Expense added",
         "data": expense
+    }
+
+@app.post("/income")
+def create_income(income: Income):
+    incomes.append(income)
+
+    return {
+        "message": "Income added",
+        "data": income
     }
