@@ -1,8 +1,9 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, Depends
 
-from .schemas import Income, IncomeCategory
+from .schemas import Income
+from .dependencies import validate_category
 
 router = APIRouter()
 incomes: List[Income] = []
@@ -13,9 +14,7 @@ def add_income(income: Income):
     return income
 
 @router.get("/")
-def get_incomes(
-        category: str | None= Query(None, description="Категория дохода")
-    ):
+def get_incomes(category: str | None = Depends(validate_category)):
 
     if category is None:
         if incomes:
@@ -27,21 +26,8 @@ def get_incomes(
             }
         return {"message": "No incomes added"}
 
-    try:
-        category_enum = IncomeCategory(category)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": f"Category {category} does not exists",
-                "available_categories": [
-                    category.value for category in IncomeCategory
-                ]
-            }
-        )
-    
     sorted_incomes = [
-        income for income in incomes if income.category == category_enum
+        income for income in incomes if income.category == category
     ]
 
     return {
