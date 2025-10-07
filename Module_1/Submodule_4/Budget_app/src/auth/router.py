@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from .dependencies import get_current_user
+from .dependencies import ensure_user_active
 
 router = APIRouter()
 
 @router.get("/me")
-def get_me(current_user: str = Depends(get_current_user)):
+def get_me(current_user: str = Depends(ensure_user_active)):
     return {"message": f"Hello, {current_user}"}
