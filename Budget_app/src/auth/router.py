@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from .dependencies import ensure_user_active
+from src.auth.dependencies import ensure_user_active
 
 router = APIRouter()
 

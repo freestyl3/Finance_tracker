@@ -2,9 +2,9 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 
-from .schemas import Expense
-from .dependencies import validate_category
-from ..auth.dependencies import ensure_user_active
+from src.expenses.schemas import Expense
+from src.expenses.dependencies import validate_category
+from src.auth.dependencies import ensure_user_active
 
 router = APIRouter()
 expenses: List[Expense] = []

@@ -2,8 +2,8 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 
-from .schemas import Income
-from .dependencies import validate_category
+from src.incomes.schemas import Income
+from src.incomes.dependencies import validate_category
 
 router = APIRouter()
 incomes: List[Income] = []

@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from ..expenses.schemas import Expense
+from src.expenses.schemas import Expense
 
 class IncomeCategory(str, Enum):
     salary = "Зарплата"
