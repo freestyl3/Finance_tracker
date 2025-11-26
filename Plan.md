@@ -48,9 +48,9 @@
 
 ## Подмодуль 1. Подключение PostgreSQL и ORM SQLAlchemy
 
-1. Введение в базы данных и драйверы (`asyncpg`)
-2. Настройка SQLAlchemy 2.0 (Engine, Session)
-3. Описание моделей данных (User, Income, Expense)
+1. Введение в базы данных и драйверы (`asyncpg`) - [x]
+2. Настройка SQLAlchemy 2.0 (Engine, Session) - [x]
+3. Описание моделей данных (User, Income, Expense) - [x]
 4. Связи в SQLAlchemy (`ForeignKey`, `relationship`)
 5. Миграции с Alembic: инициализация и ревизии
 6. **Практика**: Настройка `docker-compose` и первая миграция
