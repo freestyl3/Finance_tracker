@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from src.incomes.models import Income
 
 class User(Base):
+    __tablename__ = "users"
+
     username: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String)
