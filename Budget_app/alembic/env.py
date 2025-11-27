@@ -1,4 +1,5 @@
 import asyncio
+import platform
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -79,6 +80,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={"ssl": False}
     )
 
     async with connectable.connect() as connection:
@@ -89,6 +91,9 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
+
+    if platform.system() == "Windows":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     asyncio.run(run_async_migrations())
 

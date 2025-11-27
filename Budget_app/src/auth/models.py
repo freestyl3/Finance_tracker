@@ -23,5 +23,5 @@ class User(Base):
     )
     incomes: Mapped[list["Income"]] = relationship(
         back_populates="user",
-        cascade="all, delete orphan"
+        cascade="all, delete-orphan"
     )
