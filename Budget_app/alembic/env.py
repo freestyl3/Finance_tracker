@@ -15,6 +15,9 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from src.core.config import settings
 from src.database.base import Base
+from src.auth.models import User
+from src.expenses.models import Expense, ExpenseCategory
+from src.incomes.models import Income, IncomeCategory
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

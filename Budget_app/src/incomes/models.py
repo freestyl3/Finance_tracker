@@ -13,7 +13,7 @@ class IncomeCategory(CategoryBase):
 
 
 class Income(OperationBase):
-    user: Mapped["User"] = relationship(back_populates="income")
+    user: Mapped["User"] = relationship(back_populates="incomes")
 
     category_id: Mapped[int] = mapped_column(ForeignKey("incomecategory.id"))
     category: Mapped["IncomeCategory"] = relationship(

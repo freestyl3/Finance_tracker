@@ -5,6 +5,10 @@ from src.incomes.router import router as incomes_router
 from src.reports.router import router as reports_router
 from src.auth.router import router as auth_router
 
+from src.auth.models import User
+from src.expenses.models import Expense, ExpenseCategory
+from src.incomes.models import Income, IncomeCategory
+
 app = FastAPI()
 
 app.include_router(expenses_router, prefix="/expenses", tags=["expenses"])
