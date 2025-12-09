@@ -2,7 +2,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.expenses.models import Expense
-from src.expenses.schemas import ExpenseCreate
+from src.expenses.schemas import ExpenseCreate, ExpenseUpdate
 
 class ExpenseRepository:
     def __init__(self, session: AsyncSession):
@@ -38,3 +38,23 @@ class ExpenseRepository:
         await self.session.commit()
 
         return result.rowcount > 0
+    
+    async def update_expense(
+            self,
+            expense_id: int,
+            user_id: int,
+            expense_update: ExpenseUpdate
+    ) -> Expense | None:
+        expense = await self.get_expense_by_id(expense_id, user_id)
+        if not expense:
+            return None
+        
+        update_data = expense_update.model_dump(exclude_unset=True)
+
+        for key, value in update_data.items():
+            setattr(expense, key, value)
+
+        await self.session.commit()
+        await self.session.refresh(expense)
+
+        return expense

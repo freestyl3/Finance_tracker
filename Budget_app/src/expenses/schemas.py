@@ -40,3 +40,24 @@ class ExpenseRead(ExpenseBase):
     created_at: dt.datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ExpenseUpdate(ExpenseBase):
+    amount: float | None = Field(
+        None,
+        gt=0,
+        description="Сумма должна быть положительным числом"
+    )
+    description: str | None = Field(
+        None,
+        max_length=200,
+        description="Необязательное описание, максимум 200 символов"
+    )
+    category_id: int | None = Field(
+        None,
+        description="ID категории расходов"
+    )
+    date: dt.date | None = Field(
+        None,
+        description="Дата расхода, по умолчанию - сегодня"
+    )
