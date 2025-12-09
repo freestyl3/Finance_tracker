@@ -15,7 +15,7 @@ class ExpenseRepository:
         await self.session.refresh(expense)
         return expense
     
-    async def get_expenses(self, user_id) -> list[Expense]:
+    async def get_expenses(self, user_id: int) -> list[Expense]:
         query = select(Expense).where(Expense.user_id == user_id)
         result = await self.session.execute(query)
         return list(result.scalars().all())
@@ -29,12 +29,11 @@ class ExpenseRepository:
         return result.scalars().one_or_none()
     
     async def delete_expense(self, expense_id: int, user_id: int) -> bool:
-        stmt = delete(Expense).where(
+        query = delete(Expense).where(
             Expense.id == expense_id,
             Expense.user_id == user_id
         )
-
-        result = await self.session.execute(stmt)
+        result = await self.session.execute(query)
         await self.session.commit()
 
         return result.rowcount > 0

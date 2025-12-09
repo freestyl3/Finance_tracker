@@ -59,5 +59,5 @@ class ExpenseUpdate(ExpenseBase):
     )
     date: dt.date | None = Field(
         None,
-        description="Дата расхода, по умолчанию - сегодня"
+        description="Дата расхода"
     )

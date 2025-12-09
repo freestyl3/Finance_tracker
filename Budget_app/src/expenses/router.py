@@ -55,7 +55,7 @@ async def delete_exepense(
     if not is_deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expense not found or you don't have permission"
+            detail="Expense not found or you don't have permission."
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -78,7 +78,7 @@ async def update_expense(
     if not updated_expense:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expense not found"
+            detail="Expense not found or you don't have permission."
         )
     
     return updated_expense
