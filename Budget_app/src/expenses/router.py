@@ -1,6 +1,7 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.exc import IntegrityError
 
 from src.expenses.schemas import ExpenseCreate, ExpenseRead
 from src.expenses.dependencies import get_expenses_repository
@@ -18,10 +19,16 @@ async def add_expense(
 ):
     current_user_id = 1
 
-    new_expense = await repo.create_expense(
-        expense_data=expense_data,
-        user_id=current_user_id
-    )
+    try:
+        new_expense = await repo.create_expense(
+            expense_data=expense_data,
+            user_id=current_user_id
+        )
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid category_id. Category does not exist."
+        )
 
     return new_expense
 
@@ -34,3 +41,21 @@ async def get_expenses(
     expenses = await repo.get_expenses(current_user_id)
 
     return expenses
+
+@router.delete("/{expense_id}")
+async def delete_exepense(
+        expense_id: int,
+        repo: ExpenseRepository = Depends(get_expenses_repository),
+        user_username: str = Depends(ensure_user_active)
+):
+    current_user_id = 1
+
+    is_deleted = await repo.delete_expense(expense_id, current_user_id)
+
+    if not is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Expense not found or you don't have permission"
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
