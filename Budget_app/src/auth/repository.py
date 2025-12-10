@@ -29,7 +29,7 @@ class UserRepository:
             await self.session.rollback()
             return None
         
-    async def get_user_by_email(self, email: str) -> User | None:
-        query = select(User).where(User.email == email)
+    async def get_user_by_username(self, username: str) -> User | None:
+        query = select(User).where(User.username == username)
         result = await self.session.execute(query)
         return result.scalars().one_or_none()
