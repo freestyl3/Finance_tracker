@@ -1,7 +1,7 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.expenses.models import Expense
+from src.expenses.models import Expense, ExpenseCategory
 from src.expenses.schemas import ExpenseCreate, ExpenseUpdate
 
 class ExpenseRepository:
@@ -14,6 +14,15 @@ class ExpenseRepository:
         await self.session.commit()
         await self.session.refresh(expense)
         return expense
+    
+    async def check_category_owner(self, category_id: int, user_id: int) -> bool:
+        query = select(ExpenseCategory.id).where(
+            ExpenseCategory.id == category_id,
+            ExpenseCategory.user_id == user_id
+        )
+
+        result = await self.session.execute(query)
+        return result.scalars().one_or_none() is not None
     
     async def get_expenses(self, user_id: int) -> list[Expense]:
         query = select(Expense).where(Expense.user_id == user_id)

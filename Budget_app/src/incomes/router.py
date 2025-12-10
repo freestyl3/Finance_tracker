@@ -14,13 +14,21 @@ async def add_income(
     repo: IncomeRepository = Depends(get_incomes_repository),
     current_user: str = Depends(get_current_user)
 ):
-    try:
-        new_income = await repo.create_income(income, current_user.id)
-    except IntegrityError:
+    is_valid_category = await repo.check_category_owner(
+        income.category_id,
+        user_id=current_user.id
+    )
+
+    if not is_valid_category:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid category_id. Category does not exist."
+            detail="Category not found."
         )
+    
+    new_income = await repo.create_income(
+        income_data=income,
+        user_id=current_user.id
+    )
     
     return new_income
 

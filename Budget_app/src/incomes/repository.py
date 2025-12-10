@@ -1,7 +1,7 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.incomes.models import Income
+from src.incomes.models import Income, IncomeCategory
 from src.incomes.schemas import IncomeCreate, IncomeUpdate
 
 class IncomeRepository:
@@ -14,6 +14,14 @@ class IncomeRepository:
         await self.session.commit()
         await self.session.refresh(income)
         return income
+    
+    async def check_category_owner(self, category_id: int, user_id: int) -> bool:
+        query = select(IncomeCategory.id).where(
+            IncomeCategory.id == category_id,
+            IncomeCategory.user_id == user_id
+        )
+        result = await self.session.execute(query)
+        return result.scalars().one_or_none() is not None
     
     async def get_incomes(self, user_id: int) -> list[Income]:
         query = select(Income).where(Income.user_id == user_id)

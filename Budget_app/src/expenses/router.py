@@ -13,20 +13,25 @@ router = APIRouter()
 
 @router.post("/", response_model=ExpenseRead)
 async def add_expense(
-    expense_data: ExpenseCreate, 
+    expense: ExpenseCreate, 
     repo: ExpenseRepository = Depends(get_expenses_repository),
     current_user: str = Depends(get_current_user)
 ):
-    try:
-        new_expense = await repo.create_expense(
-            expense_data=expense_data,
-            user_id=current_user.id
-        )
-    except IntegrityError:
+    is_valid_category = await repo.check_category_owner(
+        expense.category_id,
+        user_id=current_user.id
+    )
+
+    if not is_valid_category:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid category_id. Category does not exist."
+            detail="Category not found."
         )
+    
+    new_expense = await repo.create_expense(
+        expense_data=expense,
+        user_id=current_user.id
+    )
 
     return new_expense
 
