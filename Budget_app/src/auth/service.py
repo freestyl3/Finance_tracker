@@ -15,4 +15,4 @@ class AuthService:
         if not verify_password(password, user.hashed_password):
             return None
         
-        return User
+        return user

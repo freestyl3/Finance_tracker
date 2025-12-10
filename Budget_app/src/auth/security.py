@@ -29,3 +29,14 @@ def create_access_token(data: dict) -> str:
     )
 
     return encoded_jwt
+
+def decode_access_token(token: str) -> dict | None:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.auth.SECRET_KEY,
+            algorithms=[settings.auth.ALGORITHM]
+        )
+        return payload
+    except jwt.PyJWTError:
+        return None

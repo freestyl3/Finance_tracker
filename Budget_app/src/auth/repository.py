@@ -33,3 +33,6 @@ class UserRepository:
         query = select(User).where(User.username == username)
         result = await self.session.execute(query)
         return result.scalars().one_or_none()
+    
+    async def get_user_by_id(self, user_id: int) -> User | None:
+        return await self.session.get(User, user_id)
