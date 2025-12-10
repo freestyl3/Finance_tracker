@@ -16,7 +16,9 @@ class ExpenseCategory(CategoryBase):
 class Expense(OperationBase):
     user: Mapped["User"] = relationship(back_populates="expenses")
 
-    category_id: Mapped[int] = mapped_column(ForeignKey("expensecategory.id"))
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("expensecategory.id", ondelete="CASCADE")
+    )
     category: Mapped[ExpenseCategory] = relationship(
         back_populates="expenses",
         lazy="joined"

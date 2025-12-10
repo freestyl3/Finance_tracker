@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, declared_attr
-from sqlalchemy import String, func, ForeignKey
+from sqlalchemy import String, func, ForeignKey, UniqueConstraint
 
 class Base(DeclarativeBase):
     __abstract__ = True
@@ -16,7 +16,18 @@ class Base(DeclarativeBase):
 class CategoryBase(Base):
     __abstract__ = True
 
-    name: Mapped[str] = mapped_column(String(127), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(127), index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+
+    @declared_attr
+    def __table_args__(cls):
+        return (
+            UniqueConstraint(
+                "name", "user_id", name=f"uq_{cls.__tablename__}_name_user"
+            ),
+        )
     
 
 class OperationBase(Base):
@@ -27,4 +38,6 @@ class OperationBase(Base):
     date: Mapped[datetime] = mapped_column(default=datetime.today)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
