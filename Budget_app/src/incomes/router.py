@@ -4,22 +4,18 @@ from sqlalchemy.exc import IntegrityError
 from src.incomes.schemas import IncomeCreate, IncomeRead, IncomeUpdate
 from src.incomes.repository import IncomeRepository
 from src.incomes.dependencies import get_incomes_repository
-from src.auth.dependencies import ensure_user_active
-# from src.incomes.dependencies import validate_category
+from src.auth.dependencies import get_current_user
 
 router = APIRouter()
-# incomes: List[Income] = []
 
 @router.post("/", response_model=IncomeRead)
 async def add_income(
     income: IncomeCreate,
     repo: IncomeRepository = Depends(get_incomes_repository),
-    user_username: str = Depends(ensure_user_active)
+    current_user: str = Depends(get_current_user)
 ):
-    current_user_id = 1
-
     try:
-        new_income = await repo.create_income(income, current_user_id)
+        new_income = await repo.create_income(income, current_user.id)
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -31,21 +27,18 @@ async def add_income(
 @router.get("/", response_model=list[IncomeRead])
 async def get_incomes(
     repo: IncomeRepository = Depends(get_incomes_repository),
-    user_username: str = Depends(ensure_user_active)
+    current_user: str = Depends(get_current_user)
 ):
-    current_user_id = 1
-    incomes = await repo.get_incomes(current_user_id)
+    return await repo.get_incomes(current_user.id)
 
-    return incomes
 
 @router.delete("/{income_id}")
 async def delete_income(
     income_id: int,
     repo: IncomeRepository = Depends(get_incomes_repository),
-    user_username: str = Depends(ensure_user_active)
+    current_user: str = Depends(get_current_user)
 ):
-    current_user_id = 1
-    is_deleted = await repo.delete_income(income_id, current_user_id)
+    is_deleted = await repo.delete_income(income_id, current_user.id)
 
     if not is_deleted:
         raise HTTPException(
@@ -60,13 +53,11 @@ async def update_income(
     income_id: int,
     income_update: IncomeUpdate,
     repo: IncomeRepository = Depends(get_incomes_repository),
-    user_username: str = Depends(ensure_user_active)
+    current_user: str = Depends(get_current_user)
 ):
-    current_user_id = 1
-
     updated_income = await repo.update_income(
         income_id,
-        current_user_id,
+        current_user.id,
         income_update
     )
 

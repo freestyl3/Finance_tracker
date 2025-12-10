@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.expenses.schemas import ExpenseCreate, ExpenseRead, ExpenseUpdate
 from src.expenses.dependencies import get_expenses_repository
-from src.auth.dependencies import ensure_user_active
+from src.auth.dependencies import get_current_user
 from src.expenses.repository import ExpenseRepository
 
 router = APIRouter()
@@ -15,14 +15,12 @@ router = APIRouter()
 async def add_expense(
     expense_data: ExpenseCreate, 
     repo: ExpenseRepository = Depends(get_expenses_repository),
-    user_username: str = Depends(ensure_user_active)
+    current_user: str = Depends(get_current_user)
 ):
-    current_user_id = 1
-
     try:
         new_expense = await repo.create_expense(
             expense_data=expense_data,
-            user_id=current_user_id
+            user_id=current_user.id
         )
     except IntegrityError:
         raise HTTPException(
@@ -35,22 +33,17 @@ async def add_expense(
 @router.get("/", response_model=List[ExpenseRead])
 async def get_expenses(
     repo: ExpenseRepository = Depends(get_expenses_repository),
-    user_username: str = Depends(ensure_user_active)
+    current_user: str = Depends(get_current_user)
 ):
-    current_user_id = 1
-    expenses = await repo.get_expenses(current_user_id)
-
-    return expenses
+    return await repo.get_expenses(current_user.id)
 
 @router.delete("/{expense_id}")
 async def delete_exepense(
         expense_id: int,
         repo: ExpenseRepository = Depends(get_expenses_repository),
-        user_username: str = Depends(ensure_user_active)
+        current_user: str = Depends(get_current_user)
 ):
-    current_user_id = 1
-
-    is_deleted = await repo.delete_expense(expense_id, current_user_id)
+    is_deleted = await repo.delete_expense(expense_id, current_user.id)
 
     if not is_deleted:
         raise HTTPException(
@@ -65,13 +58,11 @@ async def update_expense(
     expense_id: int,
     expense_update: ExpenseUpdate,
     repo: ExpenseRepository = Depends(get_expenses_repository),
-    user_username: str = Depends(ensure_user_active)
+    current_user: str = Depends(get_current_user)
 ):
-    current_user_id = 1
-
     updated_expense = await repo.update_expense(
         expense_id,
-        current_user_id,
+        current_user.id,
         expense_update
     )
 
