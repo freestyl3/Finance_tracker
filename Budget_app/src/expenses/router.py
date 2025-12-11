@@ -7,6 +7,7 @@ from src.expenses.schemas import ExpenseCreate, ExpenseRead, ExpenseUpdate
 from src.expenses.dependencies import get_expenses_repository
 from src.auth.dependencies import get_current_user
 from src.expenses.repository import ExpenseRepository
+from src.auth.models import User
 
 router = APIRouter()
 # expenses: List[Expense] = []
@@ -15,7 +16,7 @@ router = APIRouter()
 async def add_expense(
     expense: ExpenseCreate, 
     repo: ExpenseRepository = Depends(get_expenses_repository),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     is_valid_category = await repo.check_category_owner(
         expense.category_id,
@@ -38,7 +39,7 @@ async def add_expense(
 @router.get("/", response_model=List[ExpenseRead])
 async def get_expenses(
     repo: ExpenseRepository = Depends(get_expenses_repository),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     return await repo.get_expenses(current_user.id)
 
@@ -46,7 +47,7 @@ async def get_expenses(
 async def delete_exepense(
         expense_id: int,
         repo: ExpenseRepository = Depends(get_expenses_repository),
-        current_user: str = Depends(get_current_user)
+        current_user: User = Depends(get_current_user)
 ):
     is_deleted = await repo.delete_expense(expense_id, current_user.id)
 
@@ -63,8 +64,20 @@ async def update_expense(
     expense_id: int,
     expense_update: ExpenseUpdate,
     repo: ExpenseRepository = Depends(get_expenses_repository),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
+    if expense_update.category_id:
+        is_valid_category = await repo.check_category_owner(
+            expense_update.category_id,
+            current_user.id
+        )
+
+        if not is_valid_category:
+            raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Category not found."
+        )
+
     updated_expense = await repo.update_expense(
         expense_id,
         current_user.id,
