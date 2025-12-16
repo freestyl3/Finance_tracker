@@ -2,7 +2,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.expenses.models import Expense, ExpenseCategory
-from src.expenses.schemas import ExpenseCreate, ExpenseUpdate
+from src.expenses.schemas import ExpenseCreate, ExpenseUpdate, ExpenseFilter
 
 class ExpenseRepository:
     def __init__(self, session: AsyncSession):
@@ -24,8 +24,25 @@ class ExpenseRepository:
         result = await self.session.execute(query)
         return result.scalars().one_or_none() is not None
     
-    async def get_expenses(self, user_id: int) -> list[Expense]:
+    async def get_expenses(
+            self,
+            user_id: int,
+            filter_params: ExpenseFilter
+    ) -> list[Expense]:
         query = select(Expense).where(Expense.user_id == user_id)
+
+        if filter_params.category_id:
+            query = query.where(Expense.category_id == filter_params.category_id)
+
+        if filter_params.date_from:
+            query = query.where(Expense.date >= filter_params.date_from)
+
+        if filter_params.date_to:
+            query = query.where(Expense.date <= filter_params.date_to)
+
+        query = query.order_by(Expense.date.desc())
+        query = query.limit(filter_params.limit).offset(filter_params.offset)
+
         result = await self.session.execute(query)
         return list(result.scalars().all())
     

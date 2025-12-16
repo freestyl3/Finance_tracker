@@ -61,3 +61,13 @@ class ExpenseUpdate(ExpenseBase):
         None,
         description="Дата расхода"
     )
+
+
+class ExpenseFilter(BaseModel):
+    category_id: int | None = Field(None, description="Фильтр по категории")
+    
+    date_from: dt.date | None = Field(None, description="Начиная с этой даты")
+    date_to: dt.date | None = Field(None, description="По эту дату включительно")
+
+    limit: int = Field(50, ge=1, le=200, description="Количество записей (макс. 200)")
+    offset: int = Field(0, ge=0, description="Смещение (сколько записей пропустить)")

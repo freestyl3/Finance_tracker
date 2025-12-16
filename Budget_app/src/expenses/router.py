@@ -3,14 +3,15 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
 
-from src.expenses.schemas import ExpenseCreate, ExpenseRead, ExpenseUpdate
+from src.expenses.schemas import (
+    ExpenseCreate, ExpenseRead, ExpenseUpdate, ExpenseFilter
+)
 from src.expenses.dependencies import get_expenses_repository
 from src.auth.dependencies import get_current_user
 from src.expenses.repository import ExpenseRepository
 from src.auth.models import User
 
 router = APIRouter()
-# expenses: List[Expense] = []
 
 @router.post("/", response_model=ExpenseRead)
 async def add_expense(
@@ -38,10 +39,11 @@ async def add_expense(
 
 @router.get("/", response_model=List[ExpenseRead])
 async def get_expenses(
+    filters: ExpenseFilter = Depends(),
     repo: ExpenseRepository = Depends(get_expenses_repository),
     current_user: User = Depends(get_current_user)
 ):
-    return await repo.get_expenses(current_user.id)
+    return await repo.get_expenses(current_user.id, filter_params=filters)
 
 @router.delete("/{expense_id}")
 async def delete_exepense(
