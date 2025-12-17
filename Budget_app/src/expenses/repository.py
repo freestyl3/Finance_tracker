@@ -1,8 +1,9 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.expenses.models import Expense, ExpenseCategory
 from src.expenses.schemas import ExpenseCreate, ExpenseUpdate, ExpenseFilter
+from src.reports.schemas import GroupedExpense
 
 class ExpenseRepository:
     def __init__(self, session: AsyncSession):
@@ -45,6 +46,28 @@ class ExpenseRepository:
 
         result = await self.session.execute(query)
         return list(result.scalars().all())
+    
+    async def get_expenses_stats(self, user_id: int) -> list[dict]:
+        total_amount = func.sum(Expense.amount).label("total_amount")
+
+        query = (
+            select(Expense.category_id, total_amount)
+            .where(Expense.user_id == user_id)
+            .group_by(Expense.category_id)
+            .order_by(total_amount.desc())
+        )
+
+        result = await self.session.execute(query)
+        expenses = []
+
+        for expense in result.mappings().all():
+            expenses.append(GroupedExpense(
+                    category_id=expense["category_id"],
+                    total_amount=expense["total_amount"]
+                )
+            )
+        
+        return expenses
     
     async def get_expense_by_id(self, expense_id: int, user_id: int) -> Expense | None:
         query = select(Expense).where(
