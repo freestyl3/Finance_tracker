@@ -1,4 +1,5 @@
 from sqlalchemy import select, delete, func
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.expenses.models import Expense, ExpenseCategory
@@ -39,7 +40,11 @@ class ExpenseRepository:
             user_id: int,
             filter_params: ExpenseFilter
     ) -> list[Expense]:
-        query = select(Expense).where(Expense.user_id == user_id)
+        query = (
+            select(Expense)
+            .options(joinedload(Expense.category))
+            .where(Expense.user_id == user_id)
+        )
         query = self._apply_report_filters(query, filter_params)
         query = query.order_by(Expense.date.desc())
         query = query.limit(filter_params.limit).offset(filter_params.offset)
@@ -70,9 +75,14 @@ class ExpenseRepository:
         total_amount = func.sum(Expense.amount).label("total_amount")
 
         query = (
-            select(Expense.category_id, total_amount)
+            select(
+                Expense.category_id,
+                ExpenseCategory.name.label("category_name"),
+                total_amount
+            )
+            .join(ExpenseCategory, Expense.category_id == ExpenseCategory.id)
             .where(Expense.user_id == user_id)
-            .group_by(Expense.category_id)
+            .group_by(Expense.category_id, ExpenseCategory.name)
             .order_by(total_amount.desc())
         )
 

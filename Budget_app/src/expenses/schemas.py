@@ -2,6 +2,13 @@ import datetime as dt
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
 
+class ExpenseCategoryRead(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ExpenseBase(BaseModel):
     amount: float = Field(
         gt=0,
@@ -11,9 +18,6 @@ class ExpenseBase(BaseModel):
         None,
         max_length=200,
         description="Необязательное описание, максимум 200 символов"
-    )
-    category_id: int = Field(
-        description="ID категории расходов"
     )
     date: dt.date = Field(
         default_factory=dt.date.today,
@@ -31,13 +35,16 @@ class ExpenseBase(BaseModel):
     
 
 class ExpenseCreate(ExpenseBase):
-    pass
+    category_id: int = Field(
+        description="ID категории расходов"
+    )
 
 
 class ExpenseRead(ExpenseBase):
     id: int
     user_id: int
     created_at: dt.datetime
+    category: ExpenseCategoryRead
 
     model_config = ConfigDict(from_attributes=True)
 

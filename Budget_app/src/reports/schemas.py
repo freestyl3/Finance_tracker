@@ -6,6 +6,7 @@ from src.expenses.schemas import ExpenseFilter
 
 class GroupedExpense(BaseModel):
     category_id: int
+    category_name: str
     total_amount: float
 
 
