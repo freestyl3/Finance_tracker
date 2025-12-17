@@ -43,6 +43,13 @@ async def get_expenses(
     repo: ExpenseRepository = Depends(get_expenses_repository),
     current_user: User = Depends(get_current_user)
 ):
+    try:
+        filters.check_date_order()
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     return await repo.get_expenses(current_user.id, filter_params=filters)
 
 @router.delete("/{expense_id}")

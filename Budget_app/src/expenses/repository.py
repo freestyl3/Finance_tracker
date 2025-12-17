@@ -3,10 +3,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.expenses.models import Expense, ExpenseCategory
 from src.expenses.schemas import ExpenseCreate, ExpenseUpdate, ExpenseFilter
+from src.reports.schemas import ReportFilter
 
 class ExpenseRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    def _apply_report_filters(self, query, filters: ExpenseFilter):
+        if filters.category_id:
+            query = query.where(Expense.category_id == filters.category_id)
+        if filters.date_from:
+            query = query.where(Expense.date >= filters.date_from)
+        if filters.date_to:
+            query = query.where(Expense.date <= filters.date_to)
+        return query
 
     async def create_expense(self, expense_data: ExpenseCreate, user_id: int) -> Expense:
         expense = Expense(**expense_data.model_dump(), user_id=user_id)
@@ -30,32 +40,33 @@ class ExpenseRepository:
             filter_params: ExpenseFilter
     ) -> list[Expense]:
         query = select(Expense).where(Expense.user_id == user_id)
-
-        if filter_params.category_id:
-            query = query.where(Expense.category_id == filter_params.category_id)
-
-        if filter_params.date_from:
-            query = query.where(Expense.date >= filter_params.date_from)
-
-        if filter_params.date_to:
-            query = query.where(Expense.date <= filter_params.date_to)
-
+        query = self._apply_report_filters(query, filter_params)
         query = query.order_by(Expense.date.desc())
         query = query.limit(filter_params.limit).offset(filter_params.offset)
 
         result = await self.session.execute(query)
         return list(result.scalars().all())
     
-    async def get_total_amount(self, user_id: int) -> float:
+    async def get_total_amount(
+            self,
+            user_id: int,
+            filters: ReportFilter
+    ) -> float:
         query = select(
             func.sum(Expense.amount).label("total")
         ).where(Expense.user_id == user_id)
+
+        query = self._apply_report_filters(query, filters)
 
         result = await self.session.execute(query)
 
         return result.scalar() or 0.0
     
-    async def get_expenses_stats(self, user_id: int) -> dict:
+    async def get_expenses_stats(
+            self,
+            user_id: int,
+            filter_params: ReportFilter
+    ) -> dict:
         total_amount = func.sum(Expense.amount).label("total_amount")
 
         query = (
@@ -65,8 +76,10 @@ class ExpenseRepository:
             .order_by(total_amount.desc())
         )
 
+        query = self._apply_report_filters(query, filter_params)
+
         grouped_result = await self.session.execute(query)
-        total_sum = await self.get_total_amount(user_id)
+        total_sum = await self.get_total_amount(user_id, filter_params)
 
         return {
             "total_sum": total_sum,

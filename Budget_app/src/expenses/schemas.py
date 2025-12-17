@@ -1,6 +1,6 @@
 import datetime as dt
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
 
 class ExpenseBase(BaseModel):
     amount: float = Field(
@@ -71,3 +71,13 @@ class ExpenseFilter(BaseModel):
 
     limit: int = Field(50, ge=1, le=200, description="Количество записей (макс. 200)")
     offset: int = Field(0, ge=0, description="Смещение (сколько записей пропустить)")
+
+    def check_date_order(self):
+        d_from = self.date_from
+        d_to = self.date_to
+
+        if d_from and d_to:
+            if d_from > d_to:
+                raise ValueError("The start date cannot be later than the end date.")
+            
+        return self
