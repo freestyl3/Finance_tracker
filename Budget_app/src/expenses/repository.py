@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.expenses.models import Expense, ExpenseCategory
 from src.expenses.schemas import ExpenseCreate, ExpenseUpdate, ExpenseFilter
-from src.reports.schemas import GroupedExpense
 
 class ExpenseRepository:
     def __init__(self, session: AsyncSession):
@@ -47,7 +46,16 @@ class ExpenseRepository:
         result = await self.session.execute(query)
         return list(result.scalars().all())
     
-    async def get_expenses_stats(self, user_id: int) -> list[dict]:
+    async def get_total_amount(self, user_id: int) -> float:
+        query = select(
+            func.sum(Expense.amount).label("total")
+        ).where(Expense.user_id == user_id)
+
+        result = await self.session.execute(query)
+
+        return result.scalar() or 0.0
+    
+    async def get_expenses_stats(self, user_id: int) -> dict:
         total_amount = func.sum(Expense.amount).label("total_amount")
 
         query = (
@@ -57,17 +65,13 @@ class ExpenseRepository:
             .order_by(total_amount.desc())
         )
 
-        result = await self.session.execute(query)
-        expenses = []
+        grouped_result = await self.session.execute(query)
+        total_sum = await self.get_total_amount(user_id)
 
-        for expense in result.mappings().all():
-            expenses.append(GroupedExpense(
-                    category_id=expense["category_id"],
-                    total_amount=expense["total_amount"]
-                )
-            )
-        
-        return expenses
+        return {
+            "total_sum": total_sum,
+            "categories": grouped_result.mappings().all()
+        }
     
     async def get_expense_by_id(self, expense_id: int, user_id: int) -> Expense | None:
         query = select(Expense).where(

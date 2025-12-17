@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from src.reports.schemas import GroupedExpense
+from src.reports.schemas import TotalExpenseSum
 from src.expenses.repository import ExpenseRepository
 from src.expenses.dependencies import get_expenses_repository
 from src.auth.models import User
@@ -8,7 +8,7 @@ from src.auth.dependencies import get_current_user
 
 router = APIRouter()
 
-@router.get("/expenses", response_model=list[GroupedExpense])
+@router.get("/expenses", response_model=TotalExpenseSum)
 async def get_expenses_by_categories(
     current_user: User = Depends(get_current_user),
     repo: ExpenseRepository = Depends(get_expenses_repository)
