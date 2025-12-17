@@ -5,6 +5,7 @@ from src.incomes.schemas import IncomeCreate, IncomeRead, IncomeUpdate
 from src.incomes.repository import IncomeRepository
 from src.incomes.dependencies import get_incomes_repository
 from src.auth.dependencies import get_current_user
+from src.auth.models import User
 
 router = APIRouter()
 
@@ -12,7 +13,7 @@ router = APIRouter()
 async def add_income(
     income: IncomeCreate,
     repo: IncomeRepository = Depends(get_incomes_repository),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     is_valid_category = await repo.check_category_owner(
         income.category_id,
@@ -35,7 +36,7 @@ async def add_income(
 @router.get("/", response_model=list[IncomeRead])
 async def get_incomes(
     repo: IncomeRepository = Depends(get_incomes_repository),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     return await repo.get_incomes(current_user.id)
 
@@ -44,7 +45,7 @@ async def get_incomes(
 async def delete_income(
     income_id: int,
     repo: IncomeRepository = Depends(get_incomes_repository),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     is_deleted = await repo.delete_income(income_id, current_user.id)
 
@@ -61,8 +62,20 @@ async def update_income(
     income_id: int,
     income_update: IncomeUpdate,
     repo: IncomeRepository = Depends(get_incomes_repository),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
+    if income_update.category_id:
+        is_valid_category = await repo.check_category_owner(
+            income_update.category_id,
+            current_user.id
+        )
+
+        if not is_valid_category:
+            raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Category not found."
+        )
+
     updated_income = await repo.update_income(
         income_id,
         current_user.id,

@@ -5,3 +5,4 @@ venv/
 Plan2.md
 .env
 *.zip
+*.sql

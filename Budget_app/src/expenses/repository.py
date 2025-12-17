@@ -1,8 +1,8 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.expenses.models import Expense, ExpenseCategory
-from src.expenses.schemas import ExpenseCreate, ExpenseUpdate
+from src.expenses.schemas import ExpenseCreate, ExpenseUpdate, ExpenseFilter
 
 class ExpenseRepository:
     def __init__(self, session: AsyncSession):
@@ -24,10 +24,54 @@ class ExpenseRepository:
         result = await self.session.execute(query)
         return result.scalars().one_or_none() is not None
     
-    async def get_expenses(self, user_id: int) -> list[Expense]:
+    async def get_expenses(
+            self,
+            user_id: int,
+            filter_params: ExpenseFilter
+    ) -> list[Expense]:
         query = select(Expense).where(Expense.user_id == user_id)
+
+        if filter_params.category_id:
+            query = query.where(Expense.category_id == filter_params.category_id)
+
+        if filter_params.date_from:
+            query = query.where(Expense.date >= filter_params.date_from)
+
+        if filter_params.date_to:
+            query = query.where(Expense.date <= filter_params.date_to)
+
+        query = query.order_by(Expense.date.desc())
+        query = query.limit(filter_params.limit).offset(filter_params.offset)
+
         result = await self.session.execute(query)
         return list(result.scalars().all())
+    
+    async def get_total_amount(self, user_id: int) -> float:
+        query = select(
+            func.sum(Expense.amount).label("total")
+        ).where(Expense.user_id == user_id)
+
+        result = await self.session.execute(query)
+
+        return result.scalar() or 0.0
+    
+    async def get_expenses_stats(self, user_id: int) -> dict:
+        total_amount = func.sum(Expense.amount).label("total_amount")
+
+        query = (
+            select(Expense.category_id, total_amount)
+            .where(Expense.user_id == user_id)
+            .group_by(Expense.category_id)
+            .order_by(total_amount.desc())
+        )
+
+        grouped_result = await self.session.execute(query)
+        total_sum = await self.get_total_amount(user_id)
+
+        return {
+            "total_sum": total_sum,
+            "categories": grouped_result.mappings().all()
+        }
     
     async def get_expense_by_id(self, expense_id: int, user_id: int) -> Expense | None:
         query = select(Expense).where(

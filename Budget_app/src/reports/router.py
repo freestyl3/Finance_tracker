@@ -1,9 +1,20 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-# from src.expenses.router import get_expenses
-# from src.incomes.router import incomes, get_incomes
+from src.reports.schemas import TotalExpenseSum
+from src.expenses.repository import ExpenseRepository
+from src.expenses.dependencies import get_expenses_repository
+from src.auth.models import User
+from src.auth.dependencies import get_current_user
 
 router = APIRouter()
+
+@router.get("/expenses", response_model=TotalExpenseSum)
+async def get_expenses_by_categories(
+    current_user: User = Depends(get_current_user),
+    repo: ExpenseRepository = Depends(get_expenses_repository)
+):
+    return await repo.get_expenses_stats(current_user.id)
+
 
 # @router.get("/difference")
 # def get_difference():
