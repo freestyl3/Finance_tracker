@@ -30,13 +30,15 @@ class CategoryBase(Base):
         )
     
 
-class OperationBase(Base):
+class AbstractOperation(Base):
     __abstract__ = True
     
     amount: Mapped[float] = mapped_column()
     description: Mapped[str|None] = mapped_column(String(255), nullable=True)
     date: Mapped[datetime] = mapped_column(default=datetime.today)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    category_id: Mapped[int] = mapped_column()
+    category: Mapped[CategoryBase] = mapped_column() # Добавить BaseOperationCategory
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE")

@@ -5,8 +5,8 @@ from sqlalchemy.exc import IntegrityError
 from src.auth.schemas import UserCreate, UserRead
 from src.auth.models import User
 from src.auth.security import get_password_hash
-from src.expenses.models import ExpenseCategory
-from src.incomes.models import IncomeCategory
+from src.operations.expenses.models import ExpenseCategory
+from src.operations.incomes.models import IncomeCategory
 
 class UserRepository:
     def __init__(self, session: AsyncSession):

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from src.database.base import OperationBase
+from src.database.base import AbstractOperation
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
 
@@ -13,7 +13,7 @@ class ExpenseCategory(CategoryBase):
     expenses: Mapped[list["Expense"]] = relationship(back_populates="category")
 
 
-class Expense(OperationBase):
+class Expense(AbstractOperation):
     user: Mapped["User"] = relationship(back_populates="expenses")
 
     category_id: Mapped[int] = mapped_column(

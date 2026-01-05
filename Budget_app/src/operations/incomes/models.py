@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
 
-from src.database.base import OperationBase, CategoryBase
+from src.database.base import AbstractOperation, CategoryBase
 
 if TYPE_CHECKING:
     from src.auth.models import User
@@ -12,7 +12,7 @@ class IncomeCategory(CategoryBase):
     incomes: Mapped[list["Income"]] = relationship(back_populates="category")
 
 
-class Income(OperationBase):
+class Income(AbstractOperation):
     user: Mapped["User"] = relationship(back_populates="incomes")
 
     category_id: Mapped[int] = mapped_column(
