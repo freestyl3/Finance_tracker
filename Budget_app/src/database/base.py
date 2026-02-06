@@ -10,7 +10,7 @@ class Base(DeclarativeBase):
     
     @declared_attr.directive
     def __tablename__(cls) -> str:
-        return cls.__name__.lower()
+        return cls.__name__.lower() + "s"
     
 
 class CategoryBase(Base):
