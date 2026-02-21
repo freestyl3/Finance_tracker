@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +43,7 @@ async def get_current_user(
         raise credentials_exception
     
     try:
-        user_id = int(user_id_str)
+        user_id = uuid.UUID(user_id_str)
     except ValueError:
         raise credentials_exception
     

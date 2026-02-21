@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
@@ -25,7 +27,7 @@ class UserRepository:
 
         try:
             await self.session.flush()
-            await self._create_default_categories(new_user)
+            # await self._create_default_categories(new_user)
             await self.session.commit()
             await self.session.refresh(new_user)
             return new_user
@@ -49,5 +51,5 @@ class UserRepository:
         result = await self.session.execute(query)
         return result.scalars().one_or_none()
     
-    async def get_user_by_id(self, user_id: int) -> User | None:
+    async def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
         return await self.session.get(User, user_id)

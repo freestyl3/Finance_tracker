@@ -8,36 +8,6 @@ from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric, func
 
 from database.base import Base
 
-class AccountType(Enum):
-    DEBIT = "debit"
-    CASH = "cash"
-
-
-class Currency(Enum):
-    RUB = "rub"
-
-
-class Account(Base):
-    name: Mapped[str] = mapped_column(String(255))
-    type: Mapped[AccountType] = mapped_column()
-    currency: Mapped[Currency] = mapped_column()
-    balance: Mapped[Decimal] = mapped_column(
-        Numeric(precision=15, scale=2),
-        server_default="0"
-    )
-    is_active: Mapped[bool] = mapped_column(server_default="true")
-
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE")
-    )
-
-    __table_args__ = (
-        UniqueConstraint(
-            "name", "user_id", "is_active",
-            name="uq_accounts_name_user_is_active"
-        ),
-    )
-
 
 class OperationType(Enum):
     INCOME = "income"
