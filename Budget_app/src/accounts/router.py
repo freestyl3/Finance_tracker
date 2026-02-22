@@ -20,11 +20,11 @@ async def create_account(
     return await service.create(current_user.id, account)
 
 @router.get("/", response_model=List[AccountRead])
-async def get_accounts(
+async def get_active_accounts(
     service: AccountService = Depends(get_accounts_service),
     current_user: User = Depends(get_current_user)
 ):
-    return await service.get_all(current_user.id)
+    return await service.get_all_active(current_user.id)
 
 @router.put("/{account_id}", response_model=AccountRead)
 async def update_account(
@@ -34,3 +34,11 @@ async def update_account(
     current_user: User = Depends(get_current_user)
 ):
     return await service.update(account_update, account_id, current_user.id)
+
+@router.delete("/{account_id}")
+async def soft_delete_account(
+    account_id: uuid.UUID,
+    service: AccountService = Depends(get_accounts_service),
+    current_user: User = Depends(get_current_user)
+):
+    return await service.soft_delete(account_id, current_user.id)

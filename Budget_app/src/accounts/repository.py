@@ -15,15 +15,24 @@ class AccountRepository:
             account_data: AccountCreate,
             user_id: uuid.UUID
     ) -> Account:
-        account = Account(**account_data.model_dump(), user_id=user_id)
+        is_in_base = await self.get_account_by_name(account_data.name, user_id)
 
-        self.session.add(account)
+        if not is_in_base:
+            account = Account(**account_data.model_dump(), user_id=user_id)
+            self.session.add(account)
+        else:
+            account = is_in_base
+            account.is_active = True
+
         await self.session.commit()
         await self.session.refresh(account)
         return account
 
-    async def get_accounts(self, user_id: uuid.UUID) -> list[Account]:
-        query = select(Account).where(Account.user_id == user_id)
+    async def get_active_accounts(self, user_id: uuid.UUID) -> list[Account]:
+        query = select(Account).where(
+            Account.user_id == user_id,
+            Account.is_active == True
+        )
 
         result = await self.session.execute(query)
         return list(result.scalars().all())
@@ -40,6 +49,18 @@ class AccountRepository:
         result = await self.session.execute(query)
         return result.scalars().one_or_none()
 
+    async def get_account_by_name(
+            self,
+            account_name: str,
+            user_id: uuid.UUID
+    ) -> Account | None:
+        query = select(Account).where(
+            Account.name == account_name,
+            Account.user_id == user_id
+        )
+
+        result = await self.session.execute(query)
+        return result.scalars().one_or_none()
     
     async def update_account(
             self,
@@ -61,3 +82,16 @@ class AccountRepository:
         await self.session.refresh(account)
 
         return account
+    
+    async def soft_delete_account(
+            self,
+            account_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> None:
+        account = await self.get_account_by_id(account_id, user_id)
+
+        if account:
+            account.is_active = False
+
+        await self.session.commit()
+        await self.session.refresh(account)

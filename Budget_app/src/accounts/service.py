@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Response
 
 from src.accounts.repository import AccountRepository
 from src.accounts.schemas import AccountCreate, AccountUpdate
@@ -23,8 +23,8 @@ class AccountService:
         
         return new_account
     
-    async def get_all(self, user_id: uuid.UUID):
-        return await self.repo.get_accounts(user_id)
+    async def get_all_active(self, user_id: uuid.UUID):
+        return await self.repo.get_active_accounts(user_id)
     
     async def update(
             self,
@@ -41,3 +41,12 @@ class AccountService:
             )
         
         return updated
+    
+    async def soft_delete(
+            self,
+            account_id: uuid.UUID,
+            user_id: uuid.UUID
+    ):
+        await self.repo.soft_delete_account(account_id, user_id)
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
