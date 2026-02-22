@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,3 +16,5 @@ async def get_accounts_service(
         repo: AsyncSession = Depends(get_accounts_repository)
 ) -> AccountService:
     return AccountService(repo)
+
+AccountServiceDep = Annotated[AccountService, Depends(get_accounts_service)]
