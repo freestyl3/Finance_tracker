@@ -1,4 +1,5 @@
 import uuid
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -59,3 +60,5 @@ def ensure_user_active(username: str = Depends(get_current_user)):
     if username == "banned_user":
         raise HTTPException(status_code=403, detail="User is banned!")
     return username
+
+CurrentUser = Annotated[User, Depends(get_current_user)]
