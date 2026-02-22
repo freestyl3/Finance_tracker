@@ -23,3 +23,6 @@ class AccountCreate(BaseModel):
     )
     type: AccountType = Field(description="Тип счета")
     currency: Currency = Field(description="Валюта счета")
+
+class AccountUpdate(BaseModel):
+    name: str = Field(max_length=255, description="Новое название счета")
