@@ -17,5 +17,9 @@ class AccountRead(BaseModel):
 
 class AccountCreate(BaseModel):
     name: str = Field(max_length=255, description="Название счета")
+    balance: Decimal | None = Field(
+        validation_alias="start_balance",
+        default=0.0
+    )
     type: AccountType = Field(description="Тип счета")
     currency: Currency = Field(description="Валюта счета")
