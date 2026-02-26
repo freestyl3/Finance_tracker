@@ -18,7 +18,8 @@ class AccountRepository(BaseRepository[Account, AccountUpdate]):
         data_dict = account_data.model_dump()
         existing_account = await self.get_by_name(
             account_data.name,
-            user_id
+            user_id,
+            only_active=False
         )
 
         if not existing_account:

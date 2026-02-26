@@ -10,7 +10,7 @@ from src.common.enums import OperationType
 
 class UserCategoryRepository(BaseRepository[UserCategory, CategoryUpdate]):
     def __init__(self, session: AsyncSession):
-        self.session = session
+        super().__init__(model=UserCategory, session=session)
 
     async def create(
             self,
