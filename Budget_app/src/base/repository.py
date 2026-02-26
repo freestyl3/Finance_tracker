@@ -52,6 +52,7 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
         result = await self.session.scalars(query)
         return result.one_or_none()
     
+    ## Поменять на Sequence
     async def get_all(
             self,
             user_id: uuid.UUID,
