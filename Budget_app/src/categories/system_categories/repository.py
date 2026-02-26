@@ -1,7 +1,7 @@
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, Sequence
 
 from src.categories.system_categories.models import SystemCategory
 from src.categories.base.schemas import CategoryCreate
@@ -20,17 +20,20 @@ class SystemCategoryRepository:
         await self.session.refresh(category)
         return category
 
-    async def get_all(self) -> list[SystemCategory]:
+    async def get_all(self) -> Sequence[SystemCategory]:
         query = select(SystemCategory)
 
         result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return result.scalars().all()
     
-    async def get_all_by_type(self, type: OperationType) -> list[SystemCategory]:
+    async def get_all_by_type(
+            self,
+            type: OperationType
+    ) -> Sequence[SystemCategory]:
         query = select(SystemCategory).where(SystemCategory.type == type)
 
         result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return result.scalars().all()
     
     async def get_by_id(self, category_id: uuid.UUID) -> SystemCategory | None:
         query = select(SystemCategory).where(SystemCategory.id == category_id)
