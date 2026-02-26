@@ -16,7 +16,7 @@ class AccountRepository:
             user_id: uuid.UUID
     ) -> Account:
         data_dict = account_data.model_dump()
-        existing_account = await self.get_account_by_name(
+        existing_account = await self.get_by_name(
             account_data.name,
             user_id
         )
@@ -35,7 +35,7 @@ class AccountRepository:
         await self.session.refresh(account)
         return account
 
-    async def get_active_accounts(self, user_id: uuid.UUID) -> list[Account]:
+    async def get_all_active(self, user_id: uuid.UUID) -> list[Account]:
         query = select(Account).where(
             Account.user_id == user_id,
             Account.is_active == True
@@ -44,7 +44,7 @@ class AccountRepository:
         result = await self.session.execute(query)
         return list(result.scalars().all())
     
-    async def get_account_by_id(
+    async def get_by_id(
             self,
             account_id: uuid.UUID,
             user_id: uuid.UUID
@@ -56,7 +56,7 @@ class AccountRepository:
         result = await self.session.execute(query)
         return result.scalars().one_or_none()
 
-    async def get_account_by_name(
+    async def get_by_name(
             self,
             account_name: str,
             user_id: uuid.UUID
@@ -69,13 +69,13 @@ class AccountRepository:
         result = await self.session.execute(query)
         return result.scalars().one_or_none()
     
-    async def update_account(
+    async def update(
             self,
             account_data: AccountUpdate,
             account_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> Account | None:
-        account = await self.get_account_by_id(account_id, user_id)
+        account = await self.get_by_id(account_id, user_id)
 
         if not account:
             return None
@@ -90,12 +90,12 @@ class AccountRepository:
 
         return account
     
-    async def soft_delete_account(
+    async def soft_delete(
             self,
             account_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> bool:
-        account = await self.get_account_by_id(account_id, user_id)
+        account = await self.get_by_id(account_id, user_id)
 
         if account:
             account.is_active = False

@@ -24,7 +24,7 @@ class AccountService:
         return new_account
     
     async def get_all_active(self, user_id: uuid.UUID):
-        return await self.repo.get_active_accounts(user_id)
+        return await self.repo.get_all_active(user_id)
     
     async def update(
             self,
@@ -32,7 +32,7 @@ class AccountService:
             account_id: uuid.UUID,
             user_id: uuid.UUID
     ):
-        updated = await self.repo.update_account(update_data, account_id, user_id)
+        updated = await self.repo.update(update_data, account_id, user_id)
 
         if not updated:
             raise HTTPException(
@@ -47,6 +47,6 @@ class AccountService:
             account_id: uuid.UUID,
             user_id: uuid.UUID
     ):
-        await self.repo.soft_delete_account(account_id, user_id)
+        await self.repo.soft_delete(account_id, user_id)
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
