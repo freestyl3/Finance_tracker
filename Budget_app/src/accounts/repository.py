@@ -15,14 +15,21 @@ class AccountRepository:
             account_data: AccountCreate,
             user_id: uuid.UUID
     ) -> Account:
-        is_in_base = await self.get_account_by_name(account_data.name, user_id)
+        data_dict = account_data.model_dump()
+        existing_account = await self.get_account_by_name(
+            account_data.name,
+            user_id
+        )
 
-        if not is_in_base:
-            account = Account(**account_data.model_dump(), user_id=user_id)
+        if not existing_account:
+            account = Account(**data_dict, user_id=user_id)
             self.session.add(account)
         else:
-            account = is_in_base
+            account = existing_account
             account.is_active = True
+
+            for key, value in data_dict.items():
+                setattr(account, key, value)
 
         await self.session.commit()
         await self.session.refresh(account)
@@ -87,11 +94,13 @@ class AccountRepository:
             self,
             account_id: uuid.UUID,
             user_id: uuid.UUID
-    ) -> None:
+    ) -> bool:
         account = await self.get_account_by_id(account_id, user_id)
 
         if account:
             account.is_active = False
 
-        await self.session.commit()
-        await self.session.refresh(account)
+            await self.session.commit()
+            await self.session.refresh(account)
+            return True
+        return False
