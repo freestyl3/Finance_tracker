@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.operations.expenses.models import Expense, ExpenseCategory
 from src.operations.expenses.schemas import ExpenseCreate, ExpenseUpdate, ExpenseFilter
 from src.reports.schemas import ReportFilter
-from src.base.repository import BaseOperationRepository
+from Budget_app.src.base.operaion_repository import BaseOperationRepository
 from src.pagination import PaginationParams
 
 

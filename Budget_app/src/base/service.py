@@ -3,7 +3,7 @@ from datetime import date
 from fastapi import HTTPException, status, Response
 
 from src.pagination import PaginationParams
-from src.base.repository import BaseOperationRepository
+from src.base.operaion_repository import BaseOperationRepository
 from src.base.filters import OperationFilterBase
 from src.base.schemas import OperationCreate, OperationUpdate
 from src.reports.schemas import ReportFilter

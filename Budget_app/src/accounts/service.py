@@ -24,7 +24,7 @@ class AccountService:
         return new_account
     
     async def get_all_active(self, user_id: uuid.UUID):
-        return await self.repo.get_all_active(user_id)
+        return await self.repo.get_all(user_id, only_active=True)
     
     async def update(
             self,
