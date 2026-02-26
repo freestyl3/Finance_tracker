@@ -6,8 +6,7 @@ from sqlalchemy import select, delete
 from src.categories.system_categories.models import SystemCategory
 from src.categories.base.schemas import CategoryCreate
 from src.categories.system_categories.schemas import SystemCategoryUpdate
-### Temporary import
-from src.operations.models import OperationType
+from src.common.enums import OperationType
 
 class SystemCategoryRepository:
     def __init__(self, session: AsyncSession):

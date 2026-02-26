@@ -1,7 +1,6 @@
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from src.base.repository import BaseRepository
 from src.accounts.models import Account

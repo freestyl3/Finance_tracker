@@ -1,7 +1,7 @@
 import uuid
 from pydantic import BaseModel, Field
 
-from src.operations.models import OperationType
+from src.common.enums import OperationType
 
 class CategoryRead(BaseModel):
     id: uuid.UUID

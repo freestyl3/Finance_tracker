@@ -6,8 +6,7 @@ from sqlalchemy import select
 from src.base.repository import BaseRepository
 from src.categories.base.schemas import CategoryCreate, CategoryUpdate
 from src.categories.user_categories.models import UserCategory
-### Temporary import
-from src.operations.models import OperationType
+from src.common.enums import OperationType
 
 class UserCategoryRepository(BaseRepository[UserCategory, CategoryUpdate]):
     def __init__(self, session: AsyncSession):

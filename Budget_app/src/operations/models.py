@@ -7,13 +7,7 @@ from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric, func
 
 from database.base import Base
-
-
-class OperationType(Enum):
-    INCOME = "income"
-    EXPENSE = "expense"
-    TRANSFER = "transfer"
-
+from src.common.enums import OperationType
 
 class Operation(Base):
     type: Mapped[OperationType] = mapped_column()
