@@ -7,7 +7,7 @@ class AuthService:
         self.user_repo = user_repo
 
     async def authenticate_user(self, username: str, password: str) -> User | None:
-        user = await self.user_repo.get_user_by_username(username)
+        user = await self.user_repo.get_by_username(username)
 
         if not user:
             return None

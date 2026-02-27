@@ -7,44 +7,7 @@ from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric, func
 
 from database.base import Base
-
-
-class OperationType(Enum):
-    INCOME = "income"
-    EXPENSE = "expense"
-    TRANSFER = "transfer"
-
-
-class BaseCategory(Base):
-    __abstract__ = True
-
-    type: Mapped[OperationType] = mapped_column()
-
-
-class SystemCategory(BaseCategory):
-    __tablename__ = "sys_categories"
-
-    name: Mapped[str] = mapped_column(String(255), unique=True)
-    can_disable: Mapped[bool] = mapped_column(server_default="false")
-
-
-class UserCategory(BaseCategory):
-    __tablename__ = "user_categories"
-
-    name: Mapped[str] = mapped_column(String(255))
-    can_disable: Mapped[bool] = mapped_column(server_default="true")
-    is_active: Mapped[bool] = mapped_column(server_default="true")
-
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE")
-    )
-
-    __table_args__ = (
-        UniqueConstraint(
-            "name", "user_id", "type", "uq_user_categories_name_user_type"
-        ),
-    )
-
+from src.common.enums import OperationType
 
 class Operation(Base):
     type: Mapped[OperationType] = mapped_column()

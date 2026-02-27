@@ -1,15 +1,63 @@
+import uuid
 from datetime import date
+from typing import Generic, TypeVar
 
 from fastapi import HTTPException, status, Response
 
 from src.pagination import PaginationParams
-from src.base.repository import BaseOperationRepository
+from src.base.operaion_repository import BaseOperationRepository
 from src.base.filters import OperationFilterBase
 from src.base.schemas import OperationCreate, OperationUpdate
 from src.reports.schemas import ReportFilter
 from src.reports.utils import check_date_order, generate_csv_report, get_month_range
+from src.base.repository import BaseRepository, ModelType, UpdateSchemaType
 
 ### ПЕРЕПИСАТЬ НА КАСТОМНЫЕ ИСКЛЮЧЕНИЯ И ОБРАБОТЧИКИ
+
+RepositoryType = TypeVar("RepositoryType", bound=BaseRepository)
+
+class BaseService(Generic[RepositoryType]):
+    def __init__(self, repo: BaseRepository):
+        self.repo = repo
+
+    async def get_by_id(
+            self,
+            model_id: uuid.UUID,
+            user_id: uuid.UUID,
+            only_active: bool = True
+    ) -> ModelType | None:
+        return await self.repo.get_by_id(model_id, user_id, only_active)
+    
+    async def get_by_name(
+            self,
+            model_name: str,
+            user_id: uuid.UUID,
+            only_active: bool = True
+    ) -> ModelType | None:
+        return await self.repo.get_by_name(model_name, user_id, only_active)
+    
+    async def get_all(
+            self,
+            user_id: uuid.UUID,
+            only_active: bool = True
+    ) -> list[ModelType]:
+        return await list(self.repo.get_all(user_id, only_active))
+    
+    async def update(
+            self,
+            model_id: uuid.UUID,
+            model_update: UpdateSchemaType,
+            user_id: uuid.UUID
+    ) -> ModelType | None:
+        return await self.repo.update(model_id, model_update, user_id)
+    
+    async def soft_delete(
+            self,
+            model_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool:
+        return await self.repo.soft_delete(model_id, user_id)
+
 
 class BaseOperationService:
     def __init__(self, repo: BaseOperationRepository):

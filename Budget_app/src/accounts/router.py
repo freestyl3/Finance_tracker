@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from src.accounts.dependencies import AccountServiceDep
 from src.accounts.schemas import AccountRead, AccountCreate, AccountUpdate
 from src.auth.dependencies import CurrentUser
+from src.auth.models import User
 
 router = APIRouter()
 

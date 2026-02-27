@@ -1,21 +1,11 @@
 from decimal import Decimal
-from enum import Enum
-import datetime as dt
 import uuid
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric, func
+from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric
 
 from src.database.base import Base
-
-class AccountType(Enum):
-    DEBIT = "debit"
-    CASH = "cash"
-
-
-class Currency(Enum):
-    RUB = "rub"
-
+from src.common.enums import AccountType, Currency
 
 class Account(Base):
     name: Mapped[str] = mapped_column(String(255))

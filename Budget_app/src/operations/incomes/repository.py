@@ -1,7 +1,7 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.base.repository import BaseOperationRepository
+from Budget_app.src.base.operaion_repository import BaseOperationRepository
 from src.pagination import PaginationParams
 from src.operations.incomes.models import Income, IncomeCategory
 from src.operations.incomes.schemas import IncomeCreate, IncomeUpdate, IncomeFilter
