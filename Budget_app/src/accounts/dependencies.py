@@ -13,7 +13,7 @@ async def get_accounts_repository(
     return AccountRepository(session)
 
 async def get_accounts_service(
-        repo: AsyncSession = Depends(get_accounts_repository)
+        repo: AccountRepository = Depends(get_accounts_repository)
 ) -> AccountService:
     return AccountService(repo)
 
