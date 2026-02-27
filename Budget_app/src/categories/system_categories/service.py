@@ -1,5 +1,7 @@
 import uuid
 
+from fastapi import HTTPException, status, Response
+
 from src.categories.system_categories.repository import SystemCategoryRepository
 from src.categories.system_categories.schemas import SystemCategoryUpdate
 from src.categories.base.schemas import CategoryCreate
@@ -14,7 +16,15 @@ class SystemCategoryService:
             self,
             category_create: CategoryCreate
     ) -> SystemCategory:
-        return await self.repo.create(category_create)
+        try:
+            new_category = await self.repo.create(category_create)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        return new_category
+
     
     async def get_all(self) -> list[SystemCategory]:
         return await list(self.repo.get_all())
@@ -33,7 +43,17 @@ class SystemCategoryService:
             category_id: uuid.UUID,
             category_update: SystemCategoryUpdate
     ) -> SystemCategory:
-        return await self.repo.update(category_id, category_update)
+        updated = await self.repo.update(category_id, category_update)
+
+        if not updated:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                detail="System category not found"
+            )
+        
+        return updated
     
     async def delete(self, category_id: uuid.UUID) -> bool:
-        return await self.repo.delete(category_id)
+        await self.repo.delete(category_id)
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

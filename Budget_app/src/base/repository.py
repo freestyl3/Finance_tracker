@@ -2,7 +2,7 @@ import uuid
 from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, Select
+from sqlalchemy import select, Select, Sequence
 from pydantic import BaseModel
 
 ModelType = TypeVar("ModelType")
@@ -52,12 +52,11 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
         result = await self.session.scalars(query)
         return result.one_or_none()
     
-    ## Поменять на Sequence
     async def get_all(
             self,
             user_id: uuid.UUID,
             only_active: bool = True
-    ) -> list[ModelType]:
+    ) -> Sequence[ModelType]:
         query = select(self.model).where(
             self.model.user_id == user_id
         )
@@ -66,7 +65,7 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
             query = self._get_active(query)
 
         result = await self.session.scalars(query)
-        return list(result.all())
+        return result.all()
     
     async def update(
             self,
