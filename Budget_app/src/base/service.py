@@ -49,14 +49,24 @@ class BaseService(Generic[RepositoryType]):
             model_update: UpdateSchemaType,
             user_id: uuid.UUID
     ) -> ModelType | None:
-        return await self.repo.update(model_id, model_update, user_id)
+        updated = await self.repo.update(model_id, model_update, user_id)
+
+        if not updated:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                detail="Account not found"
+            )
+        
+        return updated
     
     async def soft_delete(
             self,
             model_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> bool:
-        return await self.repo.soft_delete(model_id, user_id)
+        await self.repo.soft_delete(model_id, user_id)
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 class BaseOperationService:

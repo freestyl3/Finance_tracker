@@ -23,7 +23,7 @@ async def get_active_accounts(
     service: AccountServiceDep,
     current_user: CurrentUser
 ):
-    return await service.get_all_active(current_user.id)
+    return await service.get_all(current_user.id, only_active=True)
 
 @router.put("/{account_id}", response_model=AccountRead)
 async def update_account(
@@ -32,7 +32,7 @@ async def update_account(
     service: AccountServiceDep,
     current_user: CurrentUser
 ):
-    return await service.update(account_update, account_id, current_user.id)
+    return await service.update(account_id, account_update, current_user.id)
 
 @router.delete("/{account_id}")
 async def soft_delete_account(
