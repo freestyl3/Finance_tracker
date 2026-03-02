@@ -1,14 +1,13 @@
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from src.categories.base.schemas import CategoryRead, CategoryCreate
 from src.categories.system_categories.schemas import SystemCategoryUpdate
 from src.categories.system_categories.dependecies import SystemCategoryServiceDep
+from src.auth.dependencies import ensure_user_is_staff
 
-router = APIRouter()
-
-## ВСЕ ЗАЩИТИТЬ ПРАВАМИ АДМИНА
+router = APIRouter(dependencies=[Depends(ensure_user_is_staff)])
 
 @router.post("/", response_model=CategoryRead)
 async def create_system_category(

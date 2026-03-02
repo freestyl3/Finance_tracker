@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
-from src.auth.schemas import UserCreate, UserRead
+from src.auth.schemas import UserCreate
 from src.auth.models import User
 from src.auth.security import get_password_hash
 
@@ -18,7 +18,9 @@ class UserRepository:
         new_user = User(
             username=user_create.username,
             email=user_create.email,
-            hashed_password=hashed_password
+            hashed_password=hashed_password,
+            is_admin=False,
+            is_staff=False
         )
 
         self.session.add(new_user)

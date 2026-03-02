@@ -48,17 +48,16 @@ async def get_current_user(
     except ValueError:
         raise credentials_exception
     
-    user = await user_repo.get_user_by_id(user_id)
+    user = await user_repo.get_by_id(user_id)
 
     if not user:
         raise credentials_exception
     
     return user
     
-
-def ensure_user_active(username: str = Depends(get_current_user)):
-    if username == "banned_user":
-        raise HTTPException(status_code=403, detail="User is banned!")
-    return username
+async def ensure_user_is_staff(user: User = Depends(get_current_user)):
+    if user.is_staff:
+        return user
+    raise HTTPException(status_code=403, detail="You don`t have permission!")
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
