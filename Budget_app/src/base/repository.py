@@ -15,7 +15,7 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
 
     def _get_active(self, query: Select) -> Select:
         if hasattr(self.model, "is_active"):
-            return query.where(self.model.is_active.is_)
+            return query.where(self.model.is_active.is_(True))
         return query
 
     async def get_by_id(

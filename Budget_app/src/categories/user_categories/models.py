@@ -18,6 +18,6 @@ class UserCategory(BaseCategory):
 
     __table_args__ = (
         UniqueConstraint(
-            "name", "user_id", "type", "uq_user_categories_name_user_type"
+            "name", "user_id", "type", name="uq_user_categories_name_user_type"
         ),
     )

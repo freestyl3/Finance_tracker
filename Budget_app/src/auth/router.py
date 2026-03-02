@@ -21,7 +21,7 @@ async def register_user(
     user_create: UserCreate,
     repo: UserRepository = Depends(get_user_repository)
 ):
-    user = await repo.create_user(user_create)
+    user = await repo.create(user_create)
 
     if not user:
         raise HTTPException(

@@ -41,7 +41,7 @@ class BaseService(Generic[RepositoryType]):
             user_id: uuid.UUID,
             only_active: bool = True
     ) -> list[ModelType]:
-        return await list(self.repo.get_all(user_id, only_active))
+        return list(await self.repo.get_all(user_id, only_active))
     
     async def update(
             self,

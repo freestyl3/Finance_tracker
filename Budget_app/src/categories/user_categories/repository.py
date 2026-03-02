@@ -16,13 +16,12 @@ class UserCategoryRepository(BaseRepository[UserCategory, CategoryUpdate]):
             self,
             category_data: CategoryCreate,
             user_id: uuid.UUID
-    ) -> UserCategory:
+    ) -> UserCategory | None:
         data_dict = category_data.model_dump()
-        existing_category = await self.get_by_name_and_type(
+        existing_category = await self.get_soft_deleted(
             category_data.name,
             category_data.type,
-            user_id=user_id,
-            only_active=False
+            user_id=user_id
         )
 
         if not existing_category:
@@ -74,3 +73,19 @@ class UserCategoryRepository(BaseRepository[UserCategory, CategoryUpdate]):
 
         result = await self.session.execute(query)
         return result.scalars().one_or_none()
+    
+    async def get_soft_deleted(
+            self,
+            category_name: str,
+            category_type: OperationType,
+            user_id: uuid.UUID
+    ) -> UserCategory | None:
+        query = select(UserCategory).where(
+            UserCategory.user_id == user_id,
+            UserCategory.name == category_name,
+            UserCategory.type == category_type,
+            UserCategory.is_active.is_(False)
+        )
+
+        result = await self.session.scalars(query)
+        return result.one_or_none()

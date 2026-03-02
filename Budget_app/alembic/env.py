@@ -16,6 +16,8 @@ from src.core.config import settings
 from src.database.base import Base
 from src.auth.models import User
 from src.accounts.models import Account
+from src.categories.system_categories.models import SystemCategory
+from src.categories.user_categories.models import UserCategory
 # from src.expenses.models import Expense, ExpenseCategory
 # from src.incomes.models import Income, IncomeCategory
 
