@@ -27,7 +27,7 @@ class SystemCategoryService:
 
     
     async def get_all(self) -> list[SystemCategory]:
-        return await list(self.repo.get_all())
+        return list(await self.repo.get_all())
     
     async def get_all_by_type(
             self,
