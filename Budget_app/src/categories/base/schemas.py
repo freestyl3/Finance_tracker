@@ -16,3 +16,8 @@ class CategoryCreate(BaseModel):
 
 class CategoryUpdate(BaseModel):
     name: str = Field(max_length=255, description="Название категории")
+
+
+class GroupedAvailableCategories(BaseModel):
+    expense_categories: list[str] # Содержит названия категорий
+    income_categories: list[str] # Содержит названия категорий

@@ -7,8 +7,24 @@ from src.categories.base.schemas import (
 )
 from src.categories.user_categories.dependecies import UserCategoryServiceDep
 from src.auth.dependencies import CurrentUser
+from src.categories.base.schemas import GroupedAvailableCategories
 
 router = APIRouter()
+
+@router.get("/available", response_model=GroupedAvailableCategories)
+async def get_available_categories(
+    service: UserCategoryServiceDep,
+    current_user: CurrentUser
+):
+    return await service.get_available_categories(current_user.id)
+
+@router.post("/batch_create")
+async def batch_create_categories(
+    service: UserCategoryServiceDep,
+    categories: GroupedAvailableCategories,
+    current_user: CurrentUser
+):
+    return await service.batch_create(categories, current_user.id)
 
 @router.post("/", response_model=CategoryRead)
 async def create_user_category(

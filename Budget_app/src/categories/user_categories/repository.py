@@ -18,10 +18,11 @@ class UserCategoryRepository(BaseRepository[UserCategory, CategoryUpdate]):
             user_id: uuid.UUID
     ) -> UserCategory | None:
         data_dict = category_data.model_dump()
-        existing_category = await self.get_soft_deleted(
+        existing_category = await self.get_by_name_and_type(
             category_data.name,
             category_data.type,
-            user_id=user_id
+            user_id=user_id,
+            only_active=False
         )
 
         if not existing_category:

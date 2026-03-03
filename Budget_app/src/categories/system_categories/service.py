@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import HTTPException, status, Response
+from sqlalchemy.exc import IntegrityError
 
 from src.categories.system_categories.repository import SystemCategoryRepository
 from src.categories.system_categories.schemas import SystemCategoryUpdate
@@ -18,10 +19,10 @@ class SystemCategoryService:
     ) -> SystemCategory:
         try:
             new_category = await self.repo.create(category_create)
-        except ValueError as e:
+        except IntegrityError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
+                detail="Duplicate system category in base!"
             )
         return new_category
 
@@ -34,6 +35,12 @@ class SystemCategoryService:
             type: OperationType
     ) -> list[SystemCategory]:
         return await list(self.repo.get_all_by_type(type))
+    
+    async def get_available_for_user(
+            self,
+            user_id: uuid.UUID
+    ) -> list[SystemCategory]:
+        return list(await self.repo.get_available_for_user(user_id))
     
     async def get_by_id(self, category_id: uuid.UUID) -> SystemCategory | None:
         return await self.repo.get_by_id(category_id)
