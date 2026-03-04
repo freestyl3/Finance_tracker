@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import String
 from sqlalchemy import ForeignKey, UniqueConstraint
 
@@ -11,9 +11,13 @@ class UserCategory(BaseCategory):
 
     name: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(server_default="true")
-
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE")
+    )
+
+    operations: Mapped[list["Operation"]] = relationship(
+        back_populates="category",
+        lazy="joined"
     )
 
     __table_args__ = (

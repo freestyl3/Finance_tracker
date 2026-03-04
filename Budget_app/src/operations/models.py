@@ -1,10 +1,9 @@
 from decimal import Decimal
-from enum import Enum
 import datetime as dt
 import uuid
 
-from sqlalchemy.orm import mapped_column, Mapped
-from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric, func
+from sqlalchemy.orm import mapped_column, Mapped, relationship
+from sqlalchemy import String, ForeignKey, Numeric, func
 
 from database.base import Base
 from src.common.enums import OperationType
@@ -25,4 +24,13 @@ class Operation(Base):
     chain_id: Mapped[uuid.UUID|None] = mapped_column(
         ForeignKey("chains.id", ondelete="SET NULL"),
         nullable=True
+    )
+
+    category: Mapped["UserCategory"] = relationship(
+        back_populates="operations",
+        lazy="joined"
+    )
+    account: Mapped["Account"] = relationship(
+        back_populates="operations",
+        lazy="joined"
     )

@@ -21,7 +21,11 @@ class Account(Base):
         ForeignKey("users.id", ondelete="CASCADE")
     )
 
-    user: Mapped[list["User"]] = relationship("User", back_populates="accounts")
+    user: Mapped["User"] = relationship("User", back_populates="accounts")
+    operations: Mapped[list["Operations"]] = relationship(
+        back_populates="account",
+        lazy="joined"
+    )
 
     __table_args__ = (
         UniqueConstraint(

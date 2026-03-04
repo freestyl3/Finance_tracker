@@ -1,13 +1,12 @@
 import datetime as dt
+import uuid
+from decimal import Decimal
 
 from pydantic import Field, field_validator, BaseModel, ConfigDict
 
-class CategoryRead(BaseModel):
-    id: int
-    name: str
-    can_disable: bool
-
-    model_config = ConfigDict(from_attributes=True)
+from src.common.enums import OperationType
+from src.categories.base.schemas import CategoryRead
+from src.accounts.schemas import AccountRead
 
 class OperationDateValidator:
     @field_validator("date")
@@ -24,7 +23,7 @@ class OperationDateValidator:
 
 
 class OperationBase(BaseModel):
-    amount: float = Field(
+    amount: Decimal = Field(
         gt=0,
         description="Сумма должна быть положительным числом"
     )
@@ -36,26 +35,32 @@ class OperationBase(BaseModel):
     date: dt.date = Field(
         default_factory=dt.date.today,
         description="Дата операции, по умолчанию - сегодня"
-    ) 
+    )
+    type: OperationType = Field(
+        description="Тип операции"
+    )
     
 
 class OperationCreate(OperationBase, OperationDateValidator):
-    category_id: int = Field(
+    category_id: uuid.UUID = Field(
         description="ID категории операции"
+    )
+    account_id: uuid.UUID = Field(
+        description="ID счета"
     )
 
 
 class OperationRead(OperationBase):
-    id: int
-    user_id: int
+    id: uuid.UUID
     created_at: dt.datetime
     category: CategoryRead
+    account: AccountRead
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class OperationUpdate(OperationBase, OperationDateValidator):
-    amount: float | None = Field(
+class OperationUpdate(BaseModel, OperationDateValidator):
+    amount: Decimal | None = Field(
         None,
         gt=0,
         description="Сумма должна быть положительным числом"
@@ -65,11 +70,19 @@ class OperationUpdate(OperationBase, OperationDateValidator):
         max_length=200,
         description="Необязательное описание, максимум 200 символов"
     )
-    category_id: int | None = Field(
+    category_id: uuid.UUID | None = Field(
         None,
         description="ID категории операции"
     )
     date: dt.date | None = Field(
         None,
         description="Дата операции"
+    )
+    account_id: uuid.UUID | None = Field(
+        None,
+        description="ID счета"
+    )
+    type: OperationType | None = Field(
+        None,
+        description="Тип операции"
     )

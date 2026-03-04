@@ -136,38 +136,38 @@ class BaseOperationService:
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     
-    async def get_operations_stats(self, user_id: int, filters: ReportFilter):
-        check_date_order(filters)
-        return await self.repo.get_operations_stats(user_id, filters)
+    # async def get_operations_stats(self, user_id: int, filters: ReportFilter):
+    #     check_date_order(filters)
+    #     return await self.repo.get_operations_stats(user_id, filters)
     
-    async def get_operations_report(self, user_id: int, filters: ReportFilter):
-        check_date_order(filters)
-        report_data = await self.repo.get_operations_stats(
-            user_id=user_id,
-            filter_params=filters
-        )
+    # async def get_operations_report(self, user_id: int, filters: ReportFilter):
+    #     check_date_order(filters)
+    #     report_data = await self.repo.get_operations_stats(
+    #         user_id=user_id,
+    #         filter_params=filters
+    #     )
 
-        csv_file = generate_csv_report(report_data)
+    #     csv_file = generate_csv_report(report_data)
 
-        filename = f"report_{filters.date_from}_{filters.date_to}.csv"
+    #     filename = f"report_{filters.date_from}_{filters.date_to}.csv"
 
-        return csv_file, filename
+    #     return csv_file, filename
 
-    async def get_monthly_operations(
-        self,
-        year: int | None,
-        month: int | None,
-        user_id: int
-    ):
-        today = date.today()
-        target_year = year if year else today.year
-        target_month = month if month else today.month
+    # async def get_monthly_operations(
+    #     self,
+    #     year: int | None,
+    #     month: int | None,
+    #     user_id: int
+    # ):
+    #     today = date.today()
+    #     target_year = year if year else today.year
+    #     target_month = month if month else today.month
 
-        first_day, last_day = get_month_range(target_year, target_month)
+    #     first_day, last_day = get_month_range(target_year, target_month)
 
-        filters = ReportFilter(
-            date_from=first_day,
-            date_to=last_day
-        )
+    #     filters = ReportFilter(
+    #         date_from=first_day,
+    #         date_to=last_day
+    #     )
 
-        return await self.get_operations_stats(user_id, filters)
+    #     return await self.get_operations_stats(user_id, filters)
