@@ -1,6 +1,5 @@
 import uuid
 
-from fastapi import HTTPException, status, Response
 from sqlalchemy.exc import IntegrityError
 
 from src.operations.repository import OperationRepository

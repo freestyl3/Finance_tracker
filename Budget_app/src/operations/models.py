@@ -15,6 +15,9 @@ class Operation(Base):
     description: Mapped[str|None] = mapped_column(String(255), nullable=True)
     ignore: Mapped[bool] = mapped_column(server_default="false")
 
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
     account_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("accounts.id", ondelete="CASCADE")
     )
@@ -25,7 +28,7 @@ class Operation(Base):
         ForeignKey("chains.id", ondelete="SET NULL"),
         nullable=True
     )
-
+    
     category: Mapped["UserCategory"] = relationship(
         back_populates="operations",
         lazy="joined"

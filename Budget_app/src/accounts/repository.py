@@ -2,11 +2,11 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.base.repository import BaseRepository
+from src.base.repository import ActiveNamedRepository
 from src.accounts.models import Account
 from src.accounts.schemas import AccountCreate, AccountUpdate
 
-class AccountRepository(BaseRepository[Account, AccountUpdate]):
+class AccountRepository(ActiveNamedRepository[Account, AccountUpdate]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=Account, session=session)
 

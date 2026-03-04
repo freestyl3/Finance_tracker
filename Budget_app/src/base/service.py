@@ -10,14 +10,51 @@ from src.base.filters import OperationFilterBase
 from src.base.schemas import OperationCreate, OperationUpdate
 from src.reports.schemas import ReportFilter
 from src.reports.utils import check_date_order, generate_csv_report, get_month_range
-from src.base.repository import BaseRepository, ModelType, UpdateSchemaType
+from src.base.repository import (
+    BaseRepository, ActiveNamedRepository, ModelType, UpdateSchemaType
+)
 
 ### ПЕРЕПИСАТЬ НА КАСТОМНЫЕ ИСКЛЮЧЕНИЯ И ОБРАБОТЧИКИ
 
 RepositoryType = TypeVar("RepositoryType", bound=BaseRepository)
+ActiveNamedRepositoryType = TypeVar(
+    "ActiveNamedRepositoryType",
+    bound=ActiveNamedRepository
+)
 
 class BaseService(Generic[RepositoryType]):
     def __init__(self, repo: BaseRepository):
+        self.repo = repo
+
+    async def get_by_id(
+            self,
+            model_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> ModelType | None:
+        return await self.repo.get_by_id(model_id, user_id)
+    
+    async def get_all(self, user_id: uuid.UUID) -> list[ModelType]:
+        return list(await self.repo.get_all(user_id))
+    
+    async def update(
+            self,
+            model_id: uuid.UUID,
+            model_update: UpdateSchemaType,
+            user_id: uuid.UUID
+    ) -> ModelType | None:
+        updated = await self.repo.update(model_id, model_update, user_id)
+
+        if not updated:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                detail=f"{self.repo.model.__name__} not found"
+            )
+        
+        return updated
+
+
+class ActiveNamedService(BaseService[ActiveNamedRepositoryType]):
+    def __init__(self, repo: ActiveNamedRepository):
         self.repo = repo
 
     async def get_by_id(
@@ -42,22 +79,6 @@ class BaseService(Generic[RepositoryType]):
             only_active: bool = True
     ) -> list[ModelType]:
         return list(await self.repo.get_all(user_id, only_active))
-    
-    async def update(
-            self,
-            model_id: uuid.UUID,
-            model_update: UpdateSchemaType,
-            user_id: uuid.UUID
-    ) -> ModelType | None:
-        updated = await self.repo.update(model_id, model_update, user_id)
-
-        if not updated:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail="Account not found"
-            )
-        
-        return updated
     
     async def soft_delete(
             self,

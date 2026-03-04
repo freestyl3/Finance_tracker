@@ -3,11 +3,11 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from src.base.service import BaseService
+from src.base.service import ActiveNamedService
 from src.accounts.repository import AccountRepository
 from src.accounts.schemas import AccountCreate
 
-class AccountService(BaseService[AccountRepository]):
+class AccountService(ActiveNamedService[AccountRepository]):
     def __init__(self, repo: AccountRepository):
         super().__init__(repo)
 

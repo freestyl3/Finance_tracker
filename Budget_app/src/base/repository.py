@@ -2,7 +2,7 @@ import uuid
 from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, Select, Sequence
+from sqlalchemy import select, Sequence, delete
 from pydantic import BaseModel
 
 ModelType = TypeVar("ModelType")
@@ -13,11 +13,57 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
         self.model = model
         self.session = session
 
-    def _get_active(self, query: Select) -> Select:
-        if hasattr(self.model, "is_active"):
-            return query.where(self.model.is_active.is_(True))
-        return query
+    async def get_by_id(
+            self,
+            model_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> ModelType | None:
+        query = select(self.model).where(
+            self.model.id == model_id,
+            self.model.user_id == user_id
+        )
 
+        result = await self.session.scalars(query)
+        return result.one_or_none()
+    
+    async def get_all(self, user_id: uuid.UUID) -> Sequence[ModelType]:
+        query = select(self.model).where(self.model.user_id == user_id)
+
+        result = await self.session.scalars(query)
+        return result.all()
+    
+    async def update(
+            self,
+            model_id: uuid.UUID,
+            update_data: UpdateSchemaType,
+            user_id: uuid.UUID
+    ) -> ModelType | None:
+        obj = await self.get_by_id(model_id, user_id)
+
+        if not obj:
+            return None
+        
+        data = update_data.model_dump(exclude_unset=True)
+
+        for key, value in data.items():
+            setattr(obj, key, value)
+
+        await self.session.commit()
+        await self.session.refresh(obj)
+        return obj
+    
+    async def delete(self, model_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        query = delete(self.model).where(
+            self.model.id == model_id,
+            self.model.user_id == user_id
+        )
+        result = await self.session.execute(query)
+        await self.session.commit()
+
+        return result.rowcount > 0
+
+
+class ActiveNamedRepository(BaseRepository[ModelType, UpdateSchemaType]):
     async def get_by_id(
             self,
             model_id: uuid.UUID,
@@ -30,7 +76,7 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
         )
 
         if only_active:
-            query = self._get_active(query)
+            query = query.where(self.model.is_active.is_(True))
 
         result = await self.session.scalars(query)
         return result.one_or_none()
@@ -47,7 +93,7 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
         )
 
         if only_active:
-            query = self._get_active(query)
+            query = query.where(self.model.is_active.is_(True))
 
         result = await self.session.scalars(query)
         return result.one_or_none()
@@ -56,37 +102,15 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
             self,
             user_id: uuid.UUID,
             only_active: bool = True
-    ) -> Sequence[ModelType]:
-        query = select(self.model).where(
-            self.model.user_id == user_id
-        )
+    ) -> list[ModelType]:
+        query = select(self.model).where(self.model.user_id == user_id)
 
         if only_active:
-            query = self._get_active(query)
+            query = query.where(self.model.is_active.is_(True))
 
         result = await self.session.scalars(query)
         return result.all()
-    
-    async def update(
-            self,
-            model_id: uuid.UUID,
-            update_data: UpdateSchemaType,
-            user_id: uuid.UUID
-    ) -> ModelType | None:
-        obj = await self.get_by_id(model_id, user_id, only_active=True)
 
-        if not obj:
-            return None
-        
-        data = update_data.model_dump(exclude_unset=True)
-
-        for key, value in data.items():
-            setattr(obj, key, value)
-
-        await self.session.commit()
-        await self.session.refresh(obj)
-        return obj
-    
     async def soft_delete(
             self,
             model_id: uuid.UUID,

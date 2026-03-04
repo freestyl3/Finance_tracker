@@ -3,7 +3,7 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from src.base.service import BaseService
+from src.base.service import ActiveNamedService
 from src.categories.user_categories.repository import UserCategoryRepository
 from src.categories.base.schemas import (
     CategoryCreate, GroupedAvailableCategories, CategoryRead
@@ -13,7 +13,7 @@ from src.common.enums import OperationType
 from src.categories.system_categories.service import SystemCategoryService
 from src.categories.system_categories.repository import SystemCategoryRepository
 
-class UserCategoryService(BaseService[UserCategoryRepository]):
+class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
     def __init__(self, repo: UserCategoryRepository):
         super().__init__(repo)
 

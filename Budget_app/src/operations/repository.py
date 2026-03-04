@@ -4,12 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, Select, delete
 from sqlalchemy.orm import joinedload
 
+from src.base.repository import BaseRepository
 from src.operations.models import Operation
 from src.base.filters import OperationFilterBase
 from src.operations.schemas import OperationCreate, OperationUpdate
 from src.pagination import PaginationParams
 
-class OperationRepository():
+class OperationRepository(BaseRepository[Operation, OperationUpdate]):
     def __init__(self, session: AsyncSession):
         self.session = session
 
@@ -59,48 +60,48 @@ class OperationRepository():
         result = await self.session.execute(query)
         return list(result.scalars().all())
     
-    async def get_by_id(
-            self,
-            operation_id: uuid.UUID,
-            user_id: uuid.UUID
-    ) -> Operation | None:
-        query = select(Operation).where(
-            Operation.id == operation_id,
-            Operation.user_id == user_id
-        )
-        result = await self.session.execute(query)
-        return result.scalars().one_or_none()
+    # async def get_by_id(
+    #         self,
+    #         operation_id: uuid.UUID,
+    #         user_id: uuid.UUID
+    # ) -> Operation | None:
+    #     query = select(Operation).where(
+    #         Operation.id == operation_id,
+    #         Operation.user_id == user_id
+    #     )
+    #     result = await self.session.execute(query)
+    #     return result.scalars().one_or_none()
     
-    async def delete(self, operation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
-        query = delete(Operation).where(
-            Operation.id == operation_id,
-            Operation.user_id == user_id
-        )
-        result = await self.session.execute(query)
-        await self.session.commit()
+    # async def delete(self, operation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    #     query = delete(Operation).where(
+    #         Operation.id == operation_id,
+    #         Operation.user_id == user_id
+    #     )
+    #     result = await self.session.execute(query)
+    #     await self.session.commit()
 
-        return result.rowcount > 0
+    #     return result.rowcount > 0
     
-    async def update(
-            self,
-            operation_id: uuid.UUID,
-            operation_update: OperationUpdate,
-            user_id: uuid.UUID
-    ) -> Operation | None:
-        operation = await self.get_by_id(operation_id, user_id)
+    # async def update(
+    #         self,
+    #         operation_id: uuid.UUID,
+    #         operation_update: OperationUpdate,
+    #         user_id: uuid.UUID
+    # ) -> Operation | None:
+    #     operation = await self.get_by_id(operation_id, user_id)
 
-        if not operation:
-            return None
+    #     if not operation:
+    #         return None
         
-        update_data = operation_update.model_dump(exclude_unset=True)
+    #     update_data = operation_update.model_dump(exclude_unset=True)
 
-        for key, value in update_data.items():
-            setattr(operation, key, value)
+    #     for key, value in update_data.items():
+    #         setattr(operation, key, value)
 
-        await self.session.commit()
-        await self.session.refresh(operation)
+    #     await self.session.commit()
+    #     await self.session.refresh(operation)
 
-        return operation
+    #     return operation
     
     # async def get_total_amount(
     #         self,
