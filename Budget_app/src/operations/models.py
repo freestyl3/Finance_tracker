@@ -3,7 +3,7 @@ import datetime as dt
 import uuid
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy import String, ForeignKey, Numeric, func
+from sqlalchemy import String, ForeignKey, Numeric, func, Index
 
 from database.base import Base
 from src.common.enums import OperationType
@@ -34,3 +34,5 @@ class Operation(Base):
         back_populates="operations",
         lazy="joined"
     )
+
+    __table_args__ = (Index("idx_user_id_id", "user_id", "id"), )

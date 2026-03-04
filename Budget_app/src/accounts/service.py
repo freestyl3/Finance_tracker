@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import HTTPException, status, Response
+from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
 from src.base.service import BaseService
 from src.accounts.repository import AccountRepository
-from src.accounts.schemas import AccountCreate, AccountUpdate
+from src.accounts.schemas import AccountCreate
 
 class AccountService(BaseService[AccountRepository]):
     def __init__(self, repo: AccountRepository):
@@ -16,7 +17,7 @@ class AccountService(BaseService[AccountRepository]):
                 account_data=create_data,
                 user_id=user_id
             )
-        except ValueError as e:
+        except IntegrityError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e)

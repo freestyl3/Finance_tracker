@@ -31,19 +31,6 @@ class OperationRepository():
             operation_data: OperationCreate,
             user_id: int
     ) -> Operation:
-        ## ВЫНЕСТИ ПРОВЕРКИ В СЕРВИС
-
-        # query = select(UserCategory).where(
-        #     UserCategory.id == operation_data.category_id,
-        #     UserCategory.user_id == user_id,
-        #     UserCategory.type == operation_data.type
-        # )
-        # result = await self.session.scalars(query)
-        # category = result.one_or_none()
-
-        # if not category:
-        #     raise ValueError("Category is not valid!")
-
         operation = Operation(**operation_data.model_dump(), user_id=user_id)
         
         self.session.add(operation)
@@ -54,7 +41,6 @@ class OperationRepository():
 
     async def get_all(
             self,
-            account_id: uuid.UUID,
             user_id: uuid.UUID,
             filter_params: OperationFilterBase,
             pagination: PaginationParams
@@ -64,7 +50,6 @@ class OperationRepository():
             .options(
                 joinedload(Operation.category), joinedload(Operation.account)
             )
-            .where(Operation.account_id == account_id)
             .where(Operation.account.user_id == user_id)
         )
         query = self._apply_report_filters(query, filter_params)
@@ -76,8 +61,8 @@ class OperationRepository():
     
     async def get_by_id(
             self,
-            operation_id: int,
-            user_id: int
+            operation_id: uuid.UUID,
+            user_id: uuid.UUID
     ) -> Operation | None:
         query = select(Operation).where(
             Operation.id == operation_id,
@@ -86,7 +71,7 @@ class OperationRepository():
         result = await self.session.execute(query)
         return result.scalars().one_or_none()
     
-    async def delete(self, operation_id: int, user_id: int) -> bool:
+    async def delete(self, operation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         query = delete(Operation).where(
             Operation.id == operation_id,
             Operation.user_id == user_id
@@ -98,9 +83,9 @@ class OperationRepository():
     
     async def update(
             self,
-            operation_id: int,
-            user_id: int,
-            operation_update: OperationUpdate
+            operation_id: uuid.UUID,
+            operation_update: OperationUpdate,
+            user_id: uuid.UUID
     ) -> Operation | None:
         operation = await self.get_by_id(operation_id, user_id)
 
@@ -108,15 +93,6 @@ class OperationRepository():
             return None
         
         update_data = operation_update.model_dump(exclude_unset=True)
-
-        ## Вынести обработку в сервис
-
-        # if update_data.get("category_id", None):
-        #     if not await self._check_category_owner(
-        #         update_data["category_id"],
-        #         user_id
-        #     ):
-        #         raise ValueError("Not valid category.")
 
         for key, value in update_data.items():
             setattr(operation, key, value)
