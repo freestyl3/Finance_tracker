@@ -55,8 +55,8 @@ class OperationService:
 
     async def create(
             self,
-            user_id: uuid.UUID,
-            create_data: OperationCreate
+            create_data: OperationCreate,
+            user_id: uuid.UUID
     ) -> Operation:
         await self._validate_category(
             category_id=create_data.category_id,
@@ -82,15 +82,16 @@ class OperationService:
     async def get_all(
             self,
             user_id: uuid.UUID,
-            filters: OperationFilterBase, 
-            pagination: PaginationParams
+            pagination: PaginationParams,
+            filters: OperationFilterBase | None = None
     ) -> list[Operation]:
         # Тут еще доделать проверку на Account, когда дойду до фильтров
-        if filters.category_id:
-            await self._validate_category(
-                category_id=filters.category_id,
-                user_id=user_id
-            )
+        if filters:
+            if filters.category_id:
+                await self._validate_category(
+                    category_id=filters.category_id,
+                    user_id=user_id
+                )
 
         return await self.repo.get_all(user_id, filters, pagination)
     
