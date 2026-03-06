@@ -52,7 +52,6 @@ class OperationCreate(OperationBase, OperationDateValidator):
 
 class OperationRead(OperationBase):
     id: uuid.UUID
-    created_at: dt.datetime
     category: CategoryRead
     account: AccountRead
 

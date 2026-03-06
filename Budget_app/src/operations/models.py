@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import String, ForeignKey, Numeric, func, Index
 
-from database.base import Base
+from src.database.base import Base
 from src.common.enums import OperationType
 
 class Operation(Base):
@@ -24,10 +24,10 @@ class Operation(Base):
     category_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user_categories.id", ondelete="CASCADE")
     )
-    chain_id: Mapped[uuid.UUID|None] = mapped_column(
-        ForeignKey("chains.id", ondelete="SET NULL"),
-        nullable=True
-    )
+    # chain_id: Mapped[uuid.UUID|None] = mapped_column(
+    #     ForeignKey("chains.id", ondelete="SET NULL"),
+    #     nullable=True
+    # )
     
     category: Mapped["UserCategory"] = relationship(
         back_populates="operations",

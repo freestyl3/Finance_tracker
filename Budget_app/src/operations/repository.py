@@ -12,19 +12,20 @@ from src.pagination import PaginationParams
 
 class OperationRepository(BaseRepository[Operation, OperationUpdate]):
     def __init__(self, session: AsyncSession):
-        self.session = session
+        super().__init__(Operation, session)
 
     def _apply_report_filters(
             self,
             query: Select,
             filters: OperationFilterBase
     ) -> Select:
-        if filters.category_id:
-            query = query.where(Operation.category_id == filters.category_id)
-        if filters.date_from:
-            query = query.where(Operation.date >= filters.date_from)
-        if filters.date_to:
-            query = query.where(Operation.date <= filters.date_to)
+        if filters:
+            if filters.category_id:
+                query = query.where(Operation.category_id == filters.category_id)
+            if filters.date_from:
+                query = query.where(Operation.date >= filters.date_from)
+            if filters.date_to:
+                query = query.where(Operation.date <= filters.date_to)
         return query
     
     async def create(
@@ -51,14 +52,14 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
             .options(
                 joinedload(Operation.category), joinedload(Operation.account)
             )
-            .where(Operation.account.user_id == user_id)
+            .where(Operation.user_id == user_id)
         )
         query = self._apply_report_filters(query, filter_params)
         query = query.order_by(Operation.date.desc())
         query = query.limit(pagination.limit).offset(pagination.offset)
 
         result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return list(result.scalars().unique().all())
     
     # async def get_by_id(
     #         self,

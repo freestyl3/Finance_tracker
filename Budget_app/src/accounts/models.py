@@ -22,7 +22,7 @@ class Account(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="accounts")
-    operations: Mapped[list["Operations"]] = relationship(
+    operations: Mapped[list["Operation"]] = relationship(
         back_populates="account",
         lazy="joined"
     )

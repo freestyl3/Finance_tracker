@@ -18,8 +18,7 @@ from src.auth.models import User
 from src.accounts.models import Account
 from src.categories.system_categories.models import SystemCategory
 from src.categories.user_categories.models import UserCategory
-# from src.expenses.models import Expense, ExpenseCategory
-# from src.incomes.models import Income, IncomeCategory
+from src.operations.models import Operation
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

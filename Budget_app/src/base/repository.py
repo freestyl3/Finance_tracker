@@ -24,13 +24,13 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
         )
 
         result = await self.session.scalars(query)
-        return result.one_or_none()
+        return result.unique().one_or_none()
     
     async def get_all(self, user_id: uuid.UUID) -> Sequence[ModelType]:
         query = select(self.model).where(self.model.user_id == user_id)
 
         result = await self.session.scalars(query)
-        return result.all()
+        return result.unique().all()
     
     async def update(
             self,
@@ -79,7 +79,7 @@ class ActiveNamedRepository(BaseRepository[ModelType, UpdateSchemaType]):
             query = query.where(self.model.is_active.is_(True))
 
         result = await self.session.scalars(query)
-        return result.one_or_none()
+        return result.unique().one_or_none()
     
     async def get_by_name(
             self,
@@ -109,7 +109,7 @@ class ActiveNamedRepository(BaseRepository[ModelType, UpdateSchemaType]):
             query = query.where(self.model.is_active.is_(True))
 
         result = await self.session.scalars(query)
-        return result.all()
+        return result.unique().all()
 
     async def soft_delete(
             self,

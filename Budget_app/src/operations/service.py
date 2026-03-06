@@ -60,7 +60,7 @@ class OperationService:
     ) -> Operation:
         await self._validate_category(
             category_id=create_data.category_id,
-            type=create_data.type,
+            op_type=create_data.type,
             user_id=user_id
         )
 
