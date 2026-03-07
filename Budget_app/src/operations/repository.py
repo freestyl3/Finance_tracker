@@ -61,6 +61,21 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
         result = await self.session.execute(query)
         return list(result.scalars().unique().all())
     
+    async def update(
+            self,
+            operation: Operation,
+            update_data: OperationUpdate
+    ) -> Operation:
+        data = update_data.model_dump(exclude_unset=True)
+
+        for key, value in data.items():
+            setattr(operation, key, value)
+
+        await self.session.commit()
+        await self.session.refresh(operation)
+
+        return operation
+    
     # async def get_by_id(
     #         self,
     #         operation_id: uuid.UUID,

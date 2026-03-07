@@ -5,6 +5,9 @@ import asyncio
 from sqlalchemy import select
 
 from src.database.db_helper import db_helper
+from src.accounts.models import Account
+from src.operations.models import Operation
+from src.categories.user_categories.models import UserCategory
 from src.auth.models import User
 from src.auth.security import get_password_hash
 

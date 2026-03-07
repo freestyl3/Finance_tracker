@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from sqlalchemy.exc import IntegrityError
 
@@ -34,6 +35,7 @@ class OperationService:
             user_id,
             only_active=True
         )
+        print(category.type, op_type)
 
         if not category:
             raise ValueError("Category not found")
@@ -52,6 +54,18 @@ class OperationService:
             only_active=True
         ):
             raise ValueError("Could not validate account")
+        
+    async def _update_account_balance(
+            self,
+            account_id: uuid.UUID,
+            delta: Decimal,
+            user_id: uuid.UUID
+    ):
+        account = await self.account_repo.get_by_id(account_id, user_id)
+        account.balance += delta
+
+        await self.account_repo.session.commit()
+        await self.account_repo.session.refresh(account)
 
     async def create(
             self,
@@ -67,6 +81,12 @@ class OperationService:
         await self._validate_account(
             account_id=create_data.account_id,
             user_id=user_id
+        )
+        
+        await self._update_account_balance(
+            create_data.account_id,
+            create_data.amount,
+            user_id
         )
         
         try:
@@ -101,23 +121,42 @@ class OperationService:
             update_data: OperationUpdate,
             user_id: uuid.UUID
     ):
+        operation = await self.repo.get_by_id(operation_id, user_id)
+
+        account_id = update_data.account_id or operation.account_id
+        category_id = update_data.category_id or operation.category_id
+        op_type = update_data.type or operation.type
+
+        # raw_amount = update_data.amount if update_data.amount else abs(operation.amount)
+
+        # if op_type == OperationType.EXPENSE:
+        #     new_amount = -abs(raw_amount)
+        # else:
+        #     new_amount = abs(raw_amount)
+
+        # delta = new_amount - operation.amount
+
         if update_data.account_id:
             await self._validate_account(
                 account_id=update_data.account_id
             )
+            ### Если поменяли счет, надо обновить оба счета
 
-        if update_data.category_id:
-            await self._validate_category(
-                category_id=update_data.category_id,
-                user_id=user_id
-            )
+        await self._validate_category(
+            category_id=category_id,
+            user_id=user_id,
+            op_type=op_type
+        )
+
+        ## Добавить логику обновления баланса
+        # await self._update_account_balance(
+        #     account_id=account_id,
+        #     delta=delta,
+        #     user_id=user_id
+        # )
 
         try:
-            updated_operation = await self.repo.update(
-                operation_id,
-                update_data,
-                user_id,
-            )
+            updated_operation = await self.repo.update(operation, update_data)
         except IntegrityError as e:
             raise ValueError(str(e))
 

@@ -2,13 +2,13 @@ import datetime as dt
 import uuid
 from decimal import Decimal
 
-from pydantic import Field, field_validator, BaseModel, ConfigDict
+from pydantic import Field, field_validator, BaseModel, ConfigDict, ValidationInfo
 
 from src.common.enums import OperationType
 from src.categories.base.schemas import CategoryRead
 from src.accounts.schemas import AccountRead
 
-class OperationDateValidator:
+class OperationDateAmountValidator:
     @field_validator("date")
     @classmethod
     def validate_date(cls, v: dt.date | None) -> dt.date:
@@ -20,12 +20,24 @@ class OperationDateValidator:
         if v < dt.date(2000, 1, 1):
             raise ValueError("Дата не может быть раньше 2000 года")
         return v
+    
+    @field_validator("amount", mode="after")
+    @classmethod
+    def validate_amount(cls, v: float, info: ValidationInfo) -> float:
+        print("++++++++++++++++++++++++++++++++++++++++")
+        print(info.data)
+        if info.data.get("type") == OperationType.EXPENSE:
+            return -v            
+        return v
 
 
 class OperationBase(BaseModel):
+    type: OperationType = Field(
+        description="Тип операции"
+    )
     amount: Decimal = Field(
-        gt=0,
-        description="Сумма должна быть положительным числом"
+        description="Сумма должна быть положительным числом",
+        gt=0
     )
     description: str | None = Field(
         None,
@@ -36,12 +48,9 @@ class OperationBase(BaseModel):
         default_factory=dt.date.today,
         description="Дата операции, по умолчанию - сегодня"
     )
-    type: OperationType = Field(
-        description="Тип операции"
-    )
     
 
-class OperationCreate(OperationBase, OperationDateValidator):
+class OperationCreate(OperationBase, OperationDateAmountValidator):
     category_id: uuid.UUID = Field(
         description="ID категории операции"
     )
@@ -52,13 +61,14 @@ class OperationCreate(OperationBase, OperationDateValidator):
 
 class OperationRead(OperationBase):
     id: uuid.UUID
+    amount: Decimal
     category: CategoryRead
     account: AccountRead
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class OperationUpdate(BaseModel, OperationDateValidator):
+class OperationUpdate(BaseModel, OperationDateAmountValidator):
     amount: Decimal | None = Field(
         None,
         gt=0,
