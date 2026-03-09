@@ -1,11 +1,14 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Depends, Response
+from fastapi import APIRouter, HTTPException, Depends, Response, Query
+from fastapi_filter import FilterDepends
 
 from src.operations.dependencies import OperationServiceDep
 from src.auth.dependencies import CurrentUser
 from src.operations.schemas import OperationRead, OperationCreate, OperationUpdate
 from src.pagination import PaginationParams
+from src.operations.filters import OperationFilter
 
 router = APIRouter()
 
@@ -24,10 +27,12 @@ async def create_operation(
 async def get_operations(
     service: OperationServiceDep,
     current_user: CurrentUser,
+    filters: OperationFilter = FilterDepends(OperationFilter),
     pagination: PaginationParams = Depends()
 ):
     return await service.get_all(
         user_id=current_user.id,
+        filters=filters,
         pagination=pagination
     )
 

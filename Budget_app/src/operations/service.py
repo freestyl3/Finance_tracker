@@ -7,7 +7,7 @@ from src.operations.repository import OperationRepository
 from src.operations.schemas import OperationCreate, OperationUpdate
 from src.operations.models import Operation
 from src.pagination import PaginationParams
-from src.base.filters import OperationFilterBase
+from src.operations.filters import OperationFilter
 from src.accounts.repository import AccountRepository
 from src.categories.user_categories.repository import UserCategoryRepository
 from src.common.enums import OperationType
@@ -105,15 +105,15 @@ class OperationService:
             self,
             user_id: uuid.UUID,
             pagination: PaginationParams,
-            filters: OperationFilterBase | None = None
+            filters: OperationFilter | None = None
     ) -> list[Operation]:
         # Тут еще доделать проверку на Account, когда дойду до фильтров
-        if filters:
-            if filters.category_id:
-                await self._validate_amount(
-                    category_id=filters.category_id,
-                    user_id=user_id
-                )
+        # if filters:
+        #     if filters.category_id:
+        #         await self._validate_amount(
+        #             category_id=filters.category_id,
+        #             user_id=user_id
+        #         )
 
         return await self.repo.get_all(user_id, filters, pagination)
     

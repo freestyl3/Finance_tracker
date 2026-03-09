@@ -6,9 +6,10 @@ from sqlalchemy.orm import joinedload
 
 from src.base.repository import BaseRepository
 from src.operations.models import Operation
-from src.base.filters import OperationFilterBase
+from src.operations.filters import OperationFilter
 from src.operations.schemas import OperationCreate, OperationUpdate
 from src.pagination import PaginationParams
+from src.categories.user_categories.models import UserCategory
 
 class OperationRepository(BaseRepository[Operation, OperationUpdate]):
     def __init__(self, session: AsyncSession):
@@ -17,11 +18,18 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
     def _apply_report_filters(
             self,
             query: Select,
-            filters: OperationFilterBase
+            filters: OperationFilter
     ) -> Select:
         if filters:
-            if filters.category_id:
-                query = query.where(Operation.category_id == filters.category_id)
+            if filters.categories:
+                query = query.where(Operation.category_id.in_(filters.categories))
+            if filters.accounts:
+                query = query.where(Operation.account_id.in_(filters.accounts))
+            if filters.type:
+                query = (
+                    query.join(UserCategory, Operation.category_id == UserCategory.id)
+                    .where(UserCategory.type == filters.type)
+                )
             if filters.date_from:
                 query = query.where(Operation.date >= filters.date_from)
             if filters.date_to:
@@ -44,7 +52,7 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
     async def get_all(
             self,
             user_id: uuid.UUID,
-            filter_params: OperationFilterBase,
+            filter_params: OperationFilter,
             pagination: PaginationParams
     ) -> list[Operation]:
         query = (
