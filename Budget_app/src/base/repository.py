@@ -2,7 +2,7 @@ import uuid
 from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, Sequence, delete
+from sqlalchemy import select, Sequence, delete, update
 from pydantic import BaseModel
 
 ModelType = TypeVar("ModelType")
@@ -38,19 +38,15 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
             update_data: UpdateSchemaType,
             user_id: uuid.UUID
     ) -> ModelType | None:
-        obj = await self.get_by_id(model_id, user_id)
+        query = update(self.model).where(
+            self.model.id == model_id,
+            self.model.user_id == user_id
+        ).values(
+            **update_data.model_dump(exclude_unset=True)
+        ).returning(self.model)
 
-        if not obj:
-            return None
-        
-        data = update_data.model_dump(exclude_unset=True)
-
-        for key, value in data.items():
-            setattr(obj, key, value)
-
-        await self.session.commit()
-        await self.session.refresh(obj)
-        return obj
+        result = await self.session.scalars(query)
+        return result.unique().one_or_none()
     
     async def delete(self, model_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         query = delete(self.model).where(

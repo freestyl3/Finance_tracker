@@ -61,11 +61,7 @@ class OperationService:
             delta: Decimal,
             user_id: uuid.UUID
     ):
-        account = await self.account_repo.get_by_id(account_id, user_id)
-        account.balance += delta
-
-        await self.account_repo.session.commit()
-        await self.account_repo.session.refresh(account)
+        await self.account_repo.update_balance(account_id, delta, user_id)
 
     async def create(
             self,
@@ -107,14 +103,6 @@ class OperationService:
             pagination: PaginationParams,
             filters: OperationFilter | None = None
     ) -> list[Operation]:
-        # Тут еще доделать проверку на Account, когда дойду до фильтров
-        # if filters:
-        #     if filters.category_id:
-        #         await self._validate_amount(
-        #             category_id=filters.category_id,
-        #             user_id=user_id
-        #         )
-
         return await self.repo.get_all(user_id, filters, pagination)
     
     async def update(
@@ -132,7 +120,7 @@ class OperationService:
         category_id = update_data.category_id or operation.category_id
         amount = update_data.amount or operation.amount
 
-        if update_data.account_id:
+        if update_data.account_id and update_data.account_id != operation.account_id:
             await self._validate_account(
                 account_id=update_data.account_id
             )
@@ -144,17 +132,29 @@ class OperationService:
             user_id=user_id
         )
 
+        if new_amount != operation.amount or account_id != operation.account_id:
+            if account_id == operation.account_id:
+                delta = -operation.amount + new_amount
+
+                await self._update_account_balance(
+                    account_id=account_id,
+                    delta=delta,
+                    user_id=user_id
+                )
+            else:
+                await self._update_account_balance(
+                    account_id=operation.account_id,
+                    delta=-operation.amount,
+                    user_id=user_id
+                )
+
+                await self._update_account_balance(
+                    account_id=account_id,
+                    delta=new_amount,
+                    user_id=user_id
+                )
+        
         update_data.amount = new_amount
-
-        if new_amount != operation.amount:
-            delta = -operation.amount + new_amount
-            print(-operation.amount, new_amount, delta)
-
-            await self._update_account_balance(
-                account_id=account_id,
-                delta=delta,
-                user_id=user_id
-            )
 
         try:
             updated_operation = await self.repo.update(operation, update_data)

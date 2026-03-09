@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,4 +35,21 @@ class AccountRepository(ActiveNamedRepository[Account, AccountUpdate]):
 
         await self.session.commit()
         await self.session.refresh(account)
+        return account
+    
+    async def update_balance(
+            self,
+            account_id: uuid.UUID,
+            delta: Decimal,
+            user_id: uuid.UUID
+    ) -> Account | None:
+        account = self.get_by_id(account_id, user_id)
+        if not account:
+            return None
+        
+        account.balance += delta
+        
+        await self.session.commit()
+        await self.session.refresh(account)
+
         return account
