@@ -24,24 +24,24 @@ class OperationService:
         self.cat_repo = user_category_repository
         self.account_repo = account_repository
     
-    async def _validate_category(
+    async def _validate_amount(
             self,
+            amount: Decimal,
             category_id: uuid.UUID,
-            user_id: uuid.UUID,
-            op_type: OperationType | None = None
-    ) -> None:
+            user_id: uuid.UUID
+    ) -> Decimal:
         category = await self.cat_repo.get_by_id(
             category_id,
             user_id,
             only_active=True
         )
-        print(category.type, op_type)
 
         if not category:
             raise ValueError("Category not found")
         
-        if op_type and category.type != op_type:
-            raise ValueError("Invalid category type")
+        if category.type == OperationType.EXPENSE:
+            return -amount
+        return amount
         
     async def _validate_account(
             self,
@@ -72,11 +72,13 @@ class OperationService:
             create_data: OperationCreate,
             user_id: uuid.UUID
     ) -> Operation:
-        await self._validate_category(
+        new_amount = await self._validate_amount(
             category_id=create_data.category_id,
-            op_type=create_data.type,
+            amount=create_data.amount,
             user_id=user_id
         )
+
+        create_data.amount = new_amount
 
         await self._validate_account(
             account_id=create_data.account_id,
@@ -108,7 +110,7 @@ class OperationService:
         # Тут еще доделать проверку на Account, когда дойду до фильтров
         if filters:
             if filters.category_id:
-                await self._validate_category(
+                await self._validate_amount(
                     category_id=filters.category_id,
                     user_id=user_id
                 )
@@ -123,18 +125,12 @@ class OperationService:
     ):
         operation = await self.repo.get_by_id(operation_id, user_id)
 
+        if not operation:
+            raise ValueError("Operation not found or you don't have permission")
+
         account_id = update_data.account_id or operation.account_id
         category_id = update_data.category_id or operation.category_id
-        op_type = update_data.type or operation.type
-
-        # raw_amount = update_data.amount if update_data.amount else abs(operation.amount)
-
-        # if op_type == OperationType.EXPENSE:
-        #     new_amount = -abs(raw_amount)
-        # else:
-        #     new_amount = abs(raw_amount)
-
-        # delta = new_amount - operation.amount
+        amount = update_data.amount or operation.amount
 
         if update_data.account_id:
             await self._validate_account(
@@ -142,18 +138,23 @@ class OperationService:
             )
             ### Если поменяли счет, надо обновить оба счета
 
-        await self._validate_category(
+        new_amount = await self._validate_amount(
+            amount=abs(amount),
             category_id=category_id,
-            user_id=user_id,
-            op_type=op_type
+            user_id=user_id
         )
 
-        ## Добавить логику обновления баланса
-        # await self._update_account_balance(
-        #     account_id=account_id,
-        #     delta=delta,
-        #     user_id=user_id
-        # )
+        update_data.amount = new_amount
+
+        if new_amount != operation.amount:
+            delta = -operation.amount + new_amount
+            print(-operation.amount, new_amount, delta)
+
+            await self._update_account_balance(
+                account_id=account_id,
+                delta=delta,
+                user_id=user_id
+            )
 
         try:
             updated_operation = await self.repo.update(operation, update_data)
@@ -166,9 +167,15 @@ class OperationService:
         return updated_operation
 
     async def delete(self, operation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
-        is_deleted = await self.repo.delete(operation_id, user_id)
-
-        if not is_deleted:
+        operation = await self.repo.get_by_id(operation_id, user_id)
+        
+        if operation:
+            await self._update_account_balance(
+                account_id=operation.account_id,
+                delta=-operation.amount,
+                user_id=user_id
+            )
+        else:
             raise ValueError("Operation not found or you don't have permission")
 
-        return True
+        return await self.repo.delete(operation)

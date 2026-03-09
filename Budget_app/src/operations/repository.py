@@ -76,6 +76,19 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
 
         return operation
     
+    async def delete(
+            self,
+            operation: Operation
+    ) -> bool:
+        query = delete(Operation).where(
+            Operation.id == operation.id
+        )
+
+        result = await self.session.execute(query)
+        await self.session.commit()
+
+        return result.rowcount > 0
+    
     # async def get_by_id(
     #         self,
     #         operation_id: uuid.UUID,
