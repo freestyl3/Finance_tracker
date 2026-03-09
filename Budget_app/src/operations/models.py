@@ -9,7 +9,6 @@ from src.database.base import Base
 from src.common.enums import OperationType
 
 class Operation(Base):
-    type: Mapped[OperationType] = mapped_column()
     amount: Mapped[Decimal] = mapped_column(Numeric(precision=15, scale=2))
     date: Mapped[dt.date] = mapped_column(server_default=func.current_date())
     description: Mapped[str|None] = mapped_column(String(255), nullable=True)

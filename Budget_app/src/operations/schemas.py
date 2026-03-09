@@ -21,20 +21,16 @@ class OperationDateAmountValidator:
             raise ValueError("Дата не может быть раньше 2000 года")
         return v
     
-    @field_validator("amount", mode="after")
-    @classmethod
-    def validate_amount(cls, v: float, info: ValidationInfo) -> float:
-        print("++++++++++++++++++++++++++++++++++++++++")
-        print(info.data)
-        if info.data.get("type") == OperationType.EXPENSE:
-            return -v            
-        return v
+    ### Переписать на model_validator
+    # @field_validator("amount", mode="after")
+    # @classmethod
+    # def validate_amount(cls, v: float, info: ValidationInfo) -> float:
+    #     return -v if info.data.get("type") == OperationType.EXPENSE else v
+    
+    ## Добавить в model_validator валидацию типа операции и категории и удалить логику из сервиса
 
 
 class OperationBase(BaseModel):
-    type: OperationType = Field(
-        description="Тип операции"
-    )
     amount: Decimal = Field(
         description="Сумма должна быть положительным числом",
         gt=0
@@ -90,8 +86,4 @@ class OperationUpdate(BaseModel, OperationDateAmountValidator):
     account_id: uuid.UUID | None = Field(
         None,
         description="ID счета"
-    )
-    type: OperationType | None = Field(
-        None,
-        description="Тип операции"
     )
