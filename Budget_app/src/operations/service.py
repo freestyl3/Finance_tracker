@@ -179,3 +179,29 @@ class OperationService:
             raise ValueError("Operation not found or you don't have permission")
 
         return await self.repo.delete(operation)
+    
+    async def change_visibility(
+            self,
+            operation_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> Operation:
+        operation = await self.repo.get_by_id(operation_id, user_id)
+
+        if not operation:
+            raise ValueError("Operation not found or you don't have permission")
+        
+        operation = await self.repo.change_visibility(operation)
+
+        delta = operation.amount
+
+        if operation.ignore:
+            delta = -delta
+        
+        await self._update_account_balance(
+            account_id=operation.account_id,
+            delta=delta,
+            user_id=user_id
+        )
+
+        return operation
+            

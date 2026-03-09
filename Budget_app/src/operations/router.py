@@ -54,3 +54,11 @@ async def delete_operation(
         return Response(status_code=204)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    
+@router.patch("/{operation_id}/ignore", response_model=OperationRead)
+async def change_operation_visibility(
+    operation_id: uuid.UUID,
+    service: OperationServiceDep,
+    current_user: CurrentUser
+):
+    return await service.change_visibility(operation_id, current_user.id)

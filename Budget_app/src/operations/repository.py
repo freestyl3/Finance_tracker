@@ -89,6 +89,18 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
 
         return result.rowcount > 0
     
+    async def change_visibility(
+            self,
+            operation: Operation
+    ) -> Operation:
+        ignore = operation.ignore
+        operation.ignore = not ignore
+
+        await self.session.commit()
+        await self.session.refresh(operation)
+
+        return operation
+    
     # async def get_by_id(
     #         self,
     #         operation_id: uuid.UUID,
