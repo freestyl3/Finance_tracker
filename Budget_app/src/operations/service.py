@@ -177,6 +177,20 @@ class OperationService:
                 delta=-operation.amount,
                 user_id=user_id
             )
+
+            if operation.related_operation_id:
+                related_operation = await self.repo.get_by_id(
+                    operation.related_operation_id,
+                    user_id
+                )
+
+                await self.repo.delete(related_operation)
+
+                await self._update_account_balance(
+                    account_id=related_operation.account_id,
+                    delta=-related_operation.amount,
+                    user_id=user_id
+                )
         else:
             raise ValueError("Operation not found or you don't have permission")
 
