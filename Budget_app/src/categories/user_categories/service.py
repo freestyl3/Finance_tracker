@@ -58,6 +58,17 @@ class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
             expense_categories=expense_categories,
             income_categories=income_categories
         )
+    
+    async def get_correcting_category(
+            self,
+            op_type: OperationType,
+            user_id: uuid.UUID
+    ) -> UserCategory:
+        return await self.repo.get_one_by(
+            user_id=user_id,
+            name="__balance_correction__",
+            type=op_type
+        )
 
     async def batch_create(
             self,

@@ -29,12 +29,13 @@ class OperationService:
             self,
             amount: Decimal,
             category_id: uuid.UUID,
-            user_id: uuid.UUID
+            user_id: uuid.UUID,
+            only_active: bool = True
     ) -> Decimal:
         category = await self.cat_repo.get_by_id(
             category_id,
             user_id,
-            only_active=True
+            only_active=only_active
         )
 
         if not category:
@@ -70,12 +71,14 @@ class OperationService:
     async def create(
             self,
             create_data: OperationCreate,
-            user_id: uuid.UUID
+            user_id: uuid.UUID,
+            system_operation: bool = False
     ) -> Operation:
         new_amount = await self._validate_amount(
             category_id=create_data.category_id,
             amount=create_data.amount,
-            user_id=user_id
+            user_id=user_id,
+            only_active=not(system_operation)
         )
 
         create_data.amount = new_amount

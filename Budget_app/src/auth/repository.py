@@ -29,8 +29,7 @@ class UserRepository:
 
         try:
             await self.session.flush()
-            # await self._create_default_categories(new_user)
-            self._create_transfer_category(new_user)
+            self._create_default_categories(new_user)
             await self.session.commit()
             await self.session.refresh(new_user)
             return new_user
@@ -38,7 +37,7 @@ class UserRepository:
             await self.session.rollback()
             return None
         
-    def _create_transfer_category(self, user: User) -> UserCategory:
+    def _create_transfer_category(self, user: User) -> None:
         category = UserCategory(
             name="Перевод между счетами",
             is_active=False,
@@ -48,17 +47,31 @@ class UserRepository:
         )
 
         self.session.add(category)
-        
-    # async def _create_default_categories(self, user: User) -> None:
-    #     default_expenses = ["Еда", "Транспорт", "Жилье", "Развлечения", "Здоровье"]
-    #     for name in default_expenses:
-    #         expense = ExpenseCategory(name=name, user_id=user.id)
-    #         self.session.add(expense)
 
-    #     default_incomes = ["Зарплата", "Фриланс", "Подарки", "Инвестиции"]
-    #     for name in default_incomes:
-    #         income = IncomeCategory(name=name, user_id=user.id)
-    #         self.session.add(income)
+    def _create_correct_balance_categories(self, user: User) -> None:
+        name = "__balance_correction__"
+
+        category_expense = UserCategory(
+            name=name,
+            is_active=False,
+            deletable=False,
+            type=OperationType.EXPENSE,
+            user_id=user.id
+        )
+
+        category_income = UserCategory(
+            name=name,
+            is_active=False,
+            deletable=False,
+            type=OperationType.INCOME,
+            user_id=user.id
+        )
+
+        self.session.add_all([category_expense, category_income])
+        
+    def _create_default_categories(self, user: User) -> None:
+        self._create_transfer_category(user)
+        self._create_correct_balance_categories(user)
         
     async def get_by_username(self, username: str) -> User | None:
         query = select(User).where(User.username == username)

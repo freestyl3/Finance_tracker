@@ -32,7 +32,7 @@ class OperationBase(BaseModel):
         max_length=200,
         description="Необязательное описание, максимум 200 символов"
     )
-    date: dt.date = Field(
+    date: dt.date | None = Field(
         default_factory=dt.date.today,
         description="Дата операции, по умолчанию - сегодня"
     )
