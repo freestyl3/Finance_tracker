@@ -120,6 +120,8 @@ class OperationService:
         category_id = update_data.category_id or operation.category_id
         amount = update_data.amount or operation.amount
 
+        ## Дописать логику если на обновление пришел перевод
+
         if update_data.account_id and update_data.account_id != operation.account_id:
             await self._validate_account(
                 account_id=update_data.account_id

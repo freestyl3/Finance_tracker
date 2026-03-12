@@ -1,12 +1,14 @@
 import uuid
-from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends, Response, Query
 from fastapi_filter import FilterDepends
 
-from src.operations.dependencies import OperationServiceDep
+from src.operations.dependencies import OperationServiceDep, TransferServiceDep
 from src.auth.dependencies import CurrentUser
-from src.operations.schemas import OperationRead, OperationCreate, OperationUpdate
+from src.operations.schemas import (
+    OperationRead, OperationCreate, OperationUpdate, TransferCreate,
+    TransferResponse
+)
 from src.pagination import PaginationParams
 from src.operations.filters import OperationFilter
 
@@ -67,3 +69,24 @@ async def change_operation_visibility(
     current_user: CurrentUser
 ):
     return await service.change_visibility(operation_id, current_user.id)
+
+@router.post("/transfer", response_model=TransferResponse)
+async def create_transfer(
+    service: TransferServiceDep,
+    transfer: TransferCreate,
+    current_user: CurrentUser
+):
+    try:
+        op_out, op_in = await service.create(
+            create_data=transfer,
+            user_id=current_user.id
+        )
+        
+        return TransferResponse(
+            withdrawal=op_out,
+            deposit=op_in
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+## Дописать обновление и удаление переводов

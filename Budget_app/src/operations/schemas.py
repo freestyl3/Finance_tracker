@@ -20,14 +20,6 @@ class OperationDateAmountValidator:
         if v < dt.date(2000, 1, 1):
             raise ValueError("Дата не может быть раньше 2000 года")
         return v
-    
-    ### Переписать на model_validator
-    # @field_validator("amount", mode="after")
-    # @classmethod
-    # def validate_amount(cls, v: float, info: ValidationInfo) -> float:
-    #     return -v if info.data.get("type") == OperationType.EXPENSE else v
-    
-    ## Добавить в model_validator валидацию типа операции и категории и удалить логику из сервиса
 
 
 class OperationBase(BaseModel):
@@ -43,6 +35,15 @@ class OperationBase(BaseModel):
     date: dt.date = Field(
         default_factory=dt.date.today,
         description="Дата операции, по умолчанию - сегодня"
+    )
+
+
+class TransferCreate(OperationBase, OperationDateAmountValidator):
+    account_from: uuid.UUID = Field(
+        description="ID счета, с которого уходит перевод"
+    )
+    account_to: uuid.UUID = Field(
+        description="ID счета, на который приходит перевод"
     )
     
 
@@ -63,6 +64,11 @@ class OperationRead(OperationBase):
     account: AccountRead
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TransferResponse(BaseModel):
+    withdrawal: OperationRead
+    deposit: OperationRead
 
 
 class OperationUpdate(BaseModel, OperationDateAmountValidator):
