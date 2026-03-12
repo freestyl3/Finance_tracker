@@ -11,6 +11,7 @@ from src.operations.filters import OperationFilter
 from src.accounts.repository import AccountRepository
 from src.categories.user_categories.repository import UserCategoryRepository
 from src.common.enums import OperationType
+from src.accounts.models import Account
 
 
 class OperationService:
@@ -47,13 +48,16 @@ class OperationService:
             self,
             account_id: uuid.UUID,
             user_id: uuid.UUID
-    ) -> None:
-        if not await self.account_repo.get_by_id(
+    ) -> Account:
+        acc = await self.account_repo.get_by_id(
             model_id=account_id,
             user_id=user_id,
             only_active=True
-        ):
-            raise ValueError("Could not validate account")
+        )
+    
+        if not acc:
+            raise ValueError("Can't validate account")
+        return acc
         
     async def _update_account_balance(
             self,
@@ -120,13 +124,17 @@ class OperationService:
         category_id = update_data.category_id or operation.category_id
         amount = update_data.amount or operation.amount
 
-        ## Дописать логику если на обновление пришел перевод
+        if operation.related_operation_id:
+            raise ValueError("Can't update transfer on this endpoint. Use PUT /transfers/{operation_id}")
 
         if update_data.account_id and update_data.account_id != operation.account_id:
-            await self._validate_account(
-                account_id=update_data.account_id
+            new_account = await self._validate_account(
+                account_id=update_data.account_id,
+                user_id=user_id
             )
-            ### Если поменяли счет, надо обновить оба счета
+
+            if operation.account.currency != new_account.currency:
+                raise ValueError("Can't update accounts with different currency")
 
         new_amount = await self._validate_amount(
             amount=abs(amount),

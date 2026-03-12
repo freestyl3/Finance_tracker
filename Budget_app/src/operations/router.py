@@ -7,7 +7,7 @@ from src.operations.dependencies import OperationServiceDep, TransferServiceDep
 from src.auth.dependencies import CurrentUser
 from src.operations.schemas import (
     OperationRead, OperationCreate, OperationUpdate, TransferCreate,
-    TransferResponse
+    TransferResponse, TransferUpdate
 )
 from src.pagination import PaginationParams
 from src.operations.filters import OperationFilter
@@ -70,7 +70,7 @@ async def change_operation_visibility(
 ):
     return await service.change_visibility(operation_id, current_user.id)
 
-@router.post("/transfer", response_model=TransferResponse)
+@router.post("/transfers", response_model=TransferResponse)
 async def create_transfer(
     service: TransferServiceDep,
     transfer: TransferCreate,
@@ -89,4 +89,23 @@ async def create_transfer(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-## Дописать обновление и удаление переводов
+@router.put("/transfers/{operation_id}", response_model=TransferResponse)
+async def update_transfer(
+    operation_id: uuid.UUID,
+    transfer_update: TransferUpdate,
+    service: TransferServiceDep,
+    current_user: CurrentUser
+):
+    try:
+        op_1, op_2 = await service.update(
+            operation_id=operation_id,
+            update_data=transfer_update,
+            user_id=current_user.id
+        )
+
+        return TransferResponse(
+            withdrawal=op_1,
+            deposit=op_2
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

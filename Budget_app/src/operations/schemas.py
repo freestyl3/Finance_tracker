@@ -94,3 +94,28 @@ class OperationUpdate(BaseModel, OperationDateAmountValidator):
         None,
         description="ID счета"
     )
+
+
+class TransferUpdate(BaseModel, OperationDateAmountValidator):
+    amount: Decimal | None = Field(
+        None,
+        gt=0,
+        description="Сумма должна быть положительным числом"
+    )
+    description: str | None = Field(
+        None,
+        max_length=200,
+        description="Необязательное описание, максимум 200 символов"
+    )
+    date: dt.date | None = Field(
+        None,
+        description="Дата операции"
+    )
+    account_from_id: uuid.UUID | None = Field(
+        None,
+        description="ID счета, с которого уходит перевод"
+    )
+    account_to_id: uuid.UUID | None = Field(
+        None,
+        description="ID счета, на который приходит перевод"
+    )

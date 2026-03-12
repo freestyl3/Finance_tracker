@@ -32,10 +32,16 @@ def get_operation_service(
 
 def get_transfer_service(
         transfer_repo: TransferRepository = Depends(get_transfer_repository),
+        operation_repo: OperationRepository = Depends(get_operation_repository),
         account_repo: AccountRepository = Depends(get_account_repository),
         user_category_repo: UserCategoryRepository = Depends(get_user_category_repository)
 ) -> TransferService:
-    return TransferService(transfer_repo, user_category_repo, account_repo)
+    return TransferService(
+        repo=transfer_repo,
+        operation_repository=operation_repo,
+        user_category_repository=user_category_repo,
+        account_repository=account_repo
+    )
 
 OperationServiceDep = Annotated[
     OperationService,
