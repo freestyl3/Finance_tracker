@@ -43,7 +43,7 @@ class AccountRepository(ActiveNamedRepository[Account, AccountUpdate]):
             delta: Decimal,
             user_id: uuid.UUID
     ) -> Account | None:
-        account = self.get_by_id(account_id, user_id)
+        account = await self.get_by_id(account_id, user_id)
         if not account:
             return None
         

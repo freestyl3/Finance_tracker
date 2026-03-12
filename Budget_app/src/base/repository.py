@@ -13,6 +13,22 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
         self.model = model
         self.session = session
 
+    async def get_one_by(
+        self, 
+        user_id: uuid.UUID,
+        **kwargs
+    ) -> ModelType | None:
+        query = select(self.model).where(self.model.user_id == user_id)
+
+        for key, value in kwargs.items():
+            if not hasattr(self.model, key):
+                raise ValueError(f"Model {self.model.__name__} doesn't have field {key}")
+            
+            query = query.where(getattr(self.model, key) == value)
+
+        result = await self.session.scalars(query)
+        return result.unique().one_or_none()
+
     async def get_by_id(
             self,
             model_id: uuid.UUID,
@@ -92,7 +108,7 @@ class ActiveNamedRepository(BaseRepository[ModelType, UpdateSchemaType]):
             query = query.where(self.model.is_active.is_(True))
 
         result = await self.session.scalars(query)
-        return result.one_or_none()
+        return result.unique().one_or_none()
     
     async def get_all(
             self,

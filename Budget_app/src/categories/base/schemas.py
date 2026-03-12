@@ -1,5 +1,5 @@
 import uuid
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from src.common.enums import OperationType
 
@@ -7,6 +7,8 @@ class CategoryRead(BaseModel):
     id: uuid.UUID
     name: str
     type: OperationType
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CategoryCreate(BaseModel):
