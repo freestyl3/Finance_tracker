@@ -7,6 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from src.auth.schemas import UserCreate
 from src.auth.models import User
 from src.auth.security import get_password_hash
+from src.categories.user_categories.models import UserCategory
+from src.common.enums import OperationType
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
@@ -28,12 +30,24 @@ class UserRepository:
         try:
             await self.session.flush()
             # await self._create_default_categories(new_user)
+            self._create_transfer_category(new_user)
             await self.session.commit()
             await self.session.refresh(new_user)
             return new_user
         except IntegrityError:
             await self.session.rollback()
             return None
+        
+    def _create_transfer_category(self, user: User) -> UserCategory:
+        category = UserCategory(
+            name="Перевод между счетами",
+            is_active=False,
+            deletable=False,
+            type=OperationType.TRANSFER,
+            user_id=user.id
+        )
+
+        self.session.add(category)
         
     # async def _create_default_categories(self, user: User) -> None:
     #     default_expenses = ["Еда", "Транспорт", "Жилье", "Развлечения", "Здоровье"]
