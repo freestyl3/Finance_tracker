@@ -2,7 +2,7 @@ from decimal import Decimal
 import uuid
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric
+from sqlalchemy import String, ForeignKey, UniqueConstraint, Numeric, Index
 
 from src.database.base import Base
 from src.common.enums import AccountType, Currency
@@ -32,4 +32,5 @@ class Account(Base):
             "name", "user_id", "is_active",
             name="uq_accounts_name_user_is_active"
         ),
+        Index("idx_user_is_active", "user_id", "is_active"),
     )

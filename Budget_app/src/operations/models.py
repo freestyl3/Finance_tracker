@@ -41,4 +41,8 @@ class Operation(Base):
         lazy="joined"
     )
 
-    __table_args__ = (Index("idx_user_id_id", "user_id", "id"), )
+    __table_args__ = (
+        Index("idx_user_date", "user_id", "date"),
+        Index("idx_account_date", "account_id", "date"),
+        Index("idx_category_date", "category_id", "date")
+    )

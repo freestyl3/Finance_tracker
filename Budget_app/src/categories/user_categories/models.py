@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import String
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, Index
 
 from src.categories.base.models import BaseCategory
 
@@ -26,4 +26,6 @@ class UserCategory(BaseCategory):
         UniqueConstraint(
             "name", "user_id", "type", name="uq_user_categories_name_user_type"
         ),
+        Index("idx_user_type_is_active", "user_id", "type", "is_active"),
+        Index("idx_user_name_type", "user_id", "name", "type")
     )
