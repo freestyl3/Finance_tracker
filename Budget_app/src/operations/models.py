@@ -6,7 +6,6 @@ from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import String, ForeignKey, Numeric, func, Index
 
 from src.database.base import Base
-from src.common.enums import OperationType
 
 class Operation(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(precision=15, scale=2))
@@ -27,10 +26,10 @@ class Operation(Base):
         ForeignKey("operations.id", ondelete="cascade"),
         nullable=True
     )
-    # chain_id: Mapped[uuid.UUID|None] = mapped_column(
-    #     ForeignKey("chains.id", ondelete="SET NULL"),
-    #     nullable=True
-    # )
+    chain_id: Mapped[uuid.UUID|None] = mapped_column(
+        ForeignKey("chains.id", ondelete="SET NULL"),
+        nullable=True
+    )
     
     category: Mapped["UserCategory"] = relationship(
         back_populates="operations",
