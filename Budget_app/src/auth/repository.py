@@ -1,31 +1,35 @@
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
-from src.auth.schemas import UserCreate, UserRead
+from src.auth.schemas import UserCreate
 from src.auth.models import User
 from src.auth.security import get_password_hash
-from src.expenses.models import ExpenseCategory
-from src.incomes.models import IncomeCategory
+from src.categories.user_categories.models import UserCategory
+from src.common.enums import OperationType
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_user(self, user_create: UserCreate) -> User | None:
+    async def create(self, user_create: UserCreate) -> User | None:
         hashed_password = get_password_hash(user_create.password)
 
         new_user = User(
             username=user_create.username,
             email=user_create.email,
-            hashed_password=hashed_password
+            hashed_password=hashed_password,
+            is_admin=False,
+            is_staff=False
         )
 
         self.session.add(new_user)
 
         try:
             await self.session.flush()
-            await self._create_default_categories(new_user)
+            self._create_default_categories(new_user)
             await self.session.commit()
             await self.session.refresh(new_user)
             return new_user
@@ -33,21 +37,46 @@ class UserRepository:
             await self.session.rollback()
             return None
         
-    async def _create_default_categories(self, user: User) -> None:
-        default_expenses = ["Еда", "Транспорт", "Жилье", "Развлечения", "Здоровье"]
-        for name in default_expenses:
-            expense = ExpenseCategory(name=name, user_id=user.id)
-            self.session.add(expense)
+    def _create_transfer_category(self, user: User) -> None:
+        category = UserCategory(
+            name="Перевод между счетами",
+            is_active=False,
+            deletable=False,
+            type=OperationType.TRANSFER,
+            user_id=user.id
+        )
 
-        default_incomes = ["Зарплата", "Фриланс", "Подарки", "Инвестиции"]
-        for name in default_incomes:
-            income = IncomeCategory(name=name, user_id=user.id)
-            self.session.add(income)
+        self.session.add(category)
+
+    def _create_correct_balance_categories(self, user: User) -> None:
+        name = "__balance_correction__"
+
+        category_expense = UserCategory(
+            name=name,
+            is_active=False,
+            deletable=False,
+            type=OperationType.EXPENSE,
+            user_id=user.id
+        )
+
+        category_income = UserCategory(
+            name=name,
+            is_active=False,
+            deletable=False,
+            type=OperationType.INCOME,
+            user_id=user.id
+        )
+
+        self.session.add_all([category_expense, category_income])
         
-    async def get_user_by_username(self, username: str) -> User | None:
+    def _create_default_categories(self, user: User) -> None:
+        self._create_transfer_category(user)
+        self._create_correct_balance_categories(user)
+        
+    async def get_by_username(self, username: str) -> User | None:
         query = select(User).where(User.username == username)
         result = await self.session.execute(query)
         return result.scalars().one_or_none()
     
-    async def get_user_by_id(self, user_id: int) -> User | None:
+    async def get_by_id(self, user_id: uuid.UUID) -> User | None:
         return await self.session.get(User, user_id)

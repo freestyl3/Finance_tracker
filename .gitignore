@@ -6,3 +6,5 @@ Plan2.md
 .env
 *.zip
 *.sql
+*.dbml
+*dbdiagram

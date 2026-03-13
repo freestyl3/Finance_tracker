@@ -1,3 +1,6 @@
+import uuid
+from typing import Annotated
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,19 +44,20 @@ async def get_current_user(
         raise credentials_exception
     
     try:
-        user_id = int(user_id_str)
+        user_id = uuid.UUID(user_id_str)
     except ValueError:
         raise credentials_exception
     
-    user = await user_repo.get_user_by_id(user_id)
+    user = await user_repo.get_by_id(user_id)
 
     if not user:
         raise credentials_exception
     
     return user
     
+async def ensure_user_is_staff(user: User = Depends(get_current_user)):
+    if user.is_staff:
+        return user
+    raise HTTPException(status_code=403, detail="You don`t have permission!")
 
-def ensure_user_active(username: str = Depends(get_current_user)):
-    if username == "banned_user":
-        raise HTTPException(status_code=403, detail="User is banned!")
-    return username
+CurrentUser = Annotated[User, Depends(get_current_user)]
