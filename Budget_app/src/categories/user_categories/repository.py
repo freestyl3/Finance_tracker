@@ -1,12 +1,13 @@
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, exists
 
 from src.base.repository import ActiveNamedRepository
 from src.categories.base.schemas import CategoryCreate, CategoryUpdate
 from src.categories.user_categories.models import UserCategory
 from src.common.enums import OperationType
+from src.operations.models import Operation
 
 class UserCategoryRepository(ActiveNamedRepository[UserCategory, CategoryUpdate]):
     def __init__(self, session: AsyncSession):
@@ -56,8 +57,20 @@ class UserCategoryRepository(ActiveNamedRepository[UserCategory, CategoryUpdate]
             query = query.where(UserCategory.is_active.is_(True))
 
         result = await self.session.execute(query)
-        return result.scalars().one_or_none()
+        return result.scalars().unique().one_or_none()
     
+    async def delete(
+            self,
+            category_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool:
+        query = select(exists().where(Operation.category_id == category_id))
+        result = await self.session.scalar(query)
+
+        if result:
+            return await self.soft_delete(category_id, user_id)
+        return await super().delete(category_id, user_id)
+        
     # async def get_all_by_type(
     #         self,
     #         category_type: OperationType,

@@ -108,3 +108,11 @@ class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
                 continue
 
         return results
+
+    async def soft_delete(
+            self,
+            model_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool:
+        return await self.repo.delete(model_id, user_id)
+        

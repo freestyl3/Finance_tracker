@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response, HTTPException
 
 from src.categories.base.schemas import (
     CategoryCreate, CategoryRead, CategoryUpdate
@@ -51,9 +51,13 @@ async def update_user_category(
     return await service.update(category_id, category_update, current_user.id)
 
 @router.delete("/{category_id}")
-async def soft_delete_user_category(
+async def delete_user_category(
     category_id: uuid.UUID,
     service: UserCategoryServiceDep,
     current_user: CurrentUser
 ):
-    return await service.soft_delete(category_id, current_user.id)
+    result = await service.soft_delete(category_id, current_user.id)
+
+    if result:
+        return Response(status_code=204)
+    raise HTTPException(status_code=404, detail="User category not found")
