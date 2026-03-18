@@ -23,3 +23,6 @@ class Chain(Base):
         ForeignKey("user_categories.id", ondelete="SET NULL"),
         nullable=True
     )
+
+    account: Mapped["Account"] = relationship(lazy="joined")
+    category: Mapped["UserCategory"] = relationship(lazy="joined")

@@ -15,7 +15,7 @@ from src.operations.transfer_service import TransferService
 
 def get_operation_repository(
         session: AsyncSession = Depends(db_helper.session_dependency)
-    ) -> OperationRepository:
+) -> OperationRepository:
     return OperationRepository(session)
 
 def get_transfer_repository(

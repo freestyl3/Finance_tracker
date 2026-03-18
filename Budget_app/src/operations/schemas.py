@@ -62,6 +62,7 @@ class OperationRead(OperationBase):
     ignore: bool
     category: CategoryRead
     account: AccountRead
+    chain_id: uuid.UUID
 
     model_config = ConfigDict(from_attributes=True)
 

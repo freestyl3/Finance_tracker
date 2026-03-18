@@ -2,7 +2,7 @@ import datetime as dt
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from src.base.filters import OperationFilterBase
+# from src.base.filters import OperationFilterBase
 
 class GroupedOperation(BaseModel):
     category_id: int
@@ -33,5 +33,5 @@ class TotalIncomeSum(TotalOperationSum):
     pass
 
 
-class ReportFilter(OperationFilterBase):
-    pass
+# class ReportFilter(OperationFilterBase):
+#     pass

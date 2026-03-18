@@ -6,6 +6,7 @@ from src.accounts.router import router as accounts_router
 from src.categories.system_categories.router import router as system_categories_router
 from src.categories.user_categories.router import router as user_categories_router
 from src.operations.router import router as operations_router
+from src.chains.router import router as chain_router
 
 from src.auth.models import User
 from src.accounts.models import Account
@@ -26,7 +27,12 @@ app.include_router(
     prefix="/categories",
     tags=["user_categories"]
 )
-app.include_router(operations_router, prefix="/operations", tags=["operations"])
+app.include_router(
+    operations_router,
+    prefix="/operations",
+    tags=["operations"]
+)
+app.include_router(chain_router, prefix="/chains", tags=["chains"])
 
 @app.get("/")
 def root():

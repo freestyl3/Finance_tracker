@@ -5,7 +5,7 @@ from datetime import date
 
 from fastapi import HTTPException, status
 
-from src.reports.schemas import ReportFilter
+# from src.reports.schemas import ReportFilter
 
 def generate_csv_report(data: dict) -> io.StringIO:
     output = io.StringIO()
@@ -41,11 +41,11 @@ def get_month_range(year: int, month: int) -> tuple[date, date]:
 
 ### ДОБАВИТЬ КАСТОМНОЕ ИСКЛЮЧЕНИЕ И ОБРАБОТЧИК
 
-def check_date_order(filters: ReportFilter) -> None | ValueError:
-    try:
-        filters.check_date_order()
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+# def check_date_order(filters: ReportFilter) -> None | ValueError:
+#     try:
+#         filters.check_date_order()
+#     except ValueError as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail=str(e)
+#         )

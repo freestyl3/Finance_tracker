@@ -1,7 +1,8 @@
 import uuid
+from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, Select, delete
+from sqlalchemy import select, Select, delete, func, update
 from sqlalchemy.orm import joinedload
 
 from src.base.repository import BaseRepository
@@ -108,6 +109,57 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
         await self.session.refresh(operation)
 
         return operation
+    
+    async def get_info_for_chain_validation(
+            self,
+            operation_uuids: list[uuid.UUID],
+            user_id: uuid.UUID
+    ):
+        query = (
+            select(
+                Operation.account_id,
+                UserCategory.type,
+                func.count(Operation.id).over().label("found_count")
+            )
+            .join(UserCategory, Operation.category_id == UserCategory.id)
+            .where(
+                Operation.user_id == user_id,
+                Operation.id.in_(operation_uuids),
+                Operation.chain_id.is_(None)
+            )
+            .distinct()
+        )
+
+        result = await self.session.execute(query)
+        return result.all()
+    
+    async def get_sum_of_operations(
+            self,
+            operation_uuids: list[uuid.UUID],
+            user_id: uuid.UUID
+        ) -> Decimal | None:
+        query = select(func.sum(Operation.amount)).where(
+            Operation.user_id == user_id,
+            Operation.id.in_(operation_uuids)
+        )
+
+        result = await self.session.scalars(query)
+        return result.unique().one_or_none()
+    
+    async def update_with_chain(
+            self,
+            operation_uuids: list[uuid.UUID],
+            chain_id: uuid.UUID
+    ) -> list[Operation]:
+        query = (
+            update(Operation)
+            .where(Operation.id.in_(operation_uuids))
+            .values(chain_id=chain_id)
+            .returning(Operation)
+        )
+
+        result = await self.session.scalars(query)
+        return result.unique().all()
     
     # async def get_by_id(
     #         self,

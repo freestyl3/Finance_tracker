@@ -5,11 +5,8 @@ from typing import Generic, TypeVar
 from fastapi import HTTPException, status, Response
 
 from src.pagination import PaginationParams
-from src.base.operaion_repository import BaseOperationRepository
-from src.base.filters import OperationFilterBase
-from src.base.schemas import OperationCreate, OperationUpdate
-from src.reports.schemas import ReportFilter
-from src.reports.utils import check_date_order, generate_csv_report, get_month_range
+# from src.reports.schemas import ReportFilter
+# from src.reports.utils import check_date_order, generate_csv_report, get_month_range
 from src.base.repository import (
     BaseRepository, ActiveNamedRepository, ModelType, UpdateSchemaType
 )
@@ -90,72 +87,72 @@ class ActiveNamedService(BaseService[ActiveNamedRepositoryType]):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-class BaseOperationService:
-    def __init__(self, repo: BaseOperationRepository):
-        self.repo = repo
+# class BaseOperationService:
+#     def __init__(self, repo: BaseOperationRepository):
+#         self.repo = repo
 
-    async def create(
-            self,
-            user_id: int,
-            create_data: OperationCreate
-    ):
-        try:
-            new_operation = await self.repo.create(
-                operation_data=create_data,
-                user_id=user_id
-            )
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+#     async def create(
+#             self,
+#             user_id: int,
+#             create_data: OperationCreate
+#     ):
+#         try:
+#             new_operation = await self.repo.create(
+#                 operation_data=create_data,
+#                 user_id=user_id
+#             )
+#         except ValueError as e:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail=str(e)
+#             )
 
-        return new_operation
+#         return new_operation
 
-    async def get_all(
-            self,
-            user_id: int,
-            filters: OperationFilterBase, 
-            pagination: PaginationParams
-    ):
-        return await self.repo.get_operations(user_id, filters, pagination)
+#     async def get_all(
+#             self,
+#             user_id: int,
+#             filters: OperationFilterBase, 
+#             pagination: PaginationParams
+#     ):
+#         return await self.repo.get_operations(user_id, filters, pagination)
     
-    async def update(
-            self,
-            operation_id: int,
-            update_data: OperationUpdate,
-            user_id: int
-    ):
-        try:
-            updated_operation = await self.repo.update_operation(
-                operation_id,
-                user_id,
-                update_data
-            )
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+#     async def update(
+#             self,
+#             operation_id: int,
+#             update_data: OperationUpdate,
+#             user_id: int
+#     ):
+#         try:
+#             updated_operation = await self.repo.update_operation(
+#                 operation_id,
+#                 user_id,
+#                 update_data
+#             )
+#         except ValueError as e:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail=str(e)
+#             )
 
-        if not updated_operation:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Operation not found or you don't have permission."
-            )
+#         if not updated_operation:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail="Operation not found or you don't have permission."
+#             )
         
-        return updated_operation
+#         return updated_operation
     
-    async def delete(self, operation_id: int, user_id: int):
-        is_deleted = await self.repo.delete_operation(operation_id, user_id)
+#     async def delete(self, operation_id: int, user_id: int):
+#         is_deleted = await self.repo.delete_operation(operation_id, user_id)
 
-        if not is_deleted:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Operation not found or you don't have permission."
-            )
+#         if not is_deleted:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail="Operation not found or you don't have permission."
+#             )
 
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+#         return Response(status_code=status.HTTP_204_NO_CONTENT)
     
     # async def get_operations_stats(self, user_id: int, filters: ReportFilter):
     #     check_date_order(filters)
