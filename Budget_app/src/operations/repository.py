@@ -2,8 +2,8 @@ import uuid
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, Select, delete, func, update
-from sqlalchemy.orm import joinedload
+from sqlalchemy import select, Select, delete, func, update, not_
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.base.repository import BaseRepository
 from src.operations.models import Operation
@@ -100,15 +100,27 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
     
     async def change_visibility(
             self,
-            operation: Operation
-    ) -> Operation:
-        ignore = operation.ignore
-        operation.ignore = not ignore
+            operation_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> Operation | None:
+        query = (
+            update(Operation)
+            .options(
+                selectinload(Operation.category),
+                selectinload(Operation.account)
+            )
+            .where(
+                Operation.id == operation_id,
+                Operation.user_id == user_id,
+                Operation.chain_id.is_(None)
+            )
+            .values(ignore=not_(Operation.ignore))
+            .returning(Operation)
+        )
 
+        result = await self.session.scalars(query)
         await self.session.commit()
-        await self.session.refresh(operation)
-
-        return operation
+        return result.unique().one_or_none()
     
     async def get_info_for_chain_validation(
             self,
@@ -154,8 +166,29 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
         query = (
             update(Operation)
             .where(Operation.id.in_(operation_uuids))
-            .values(chain_id=chain_id)
+            .values(chain_id=chain_id, ignore=False)
             .returning(Operation)
+        )
+
+        result = await self.session.scalars(query)
+        return result.unique().all()
+    
+    async def get_operations_for_chain(
+            self,
+            operation_ids: list[uuid.UUID],
+            user_id: uuid.UUID
+    ) -> list[Operation]:
+        query = (
+            select(Operation)
+            .options(
+                joinedload(Operation.category),
+                joinedload(Operation.account)
+            )
+            .where(
+                Operation.user_id == user_id,
+                Operation.id.in_(operation_ids),
+                Operation.chain_id.is_(None)
+            )
         )
 
         result = await self.session.scalars(query)

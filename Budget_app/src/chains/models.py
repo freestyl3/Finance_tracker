@@ -8,7 +8,7 @@ from sqlalchemy import String, ForeignKey, Numeric, func
 from src.database.base import Base
 
 class Chain(Base):
-    amount: Mapped[Decimal] = mapped_column(Numeric(precision=15, scale=2))
+    # amount: Mapped[Decimal] = mapped_column(Numeric(precision=15, scale=2))
     date: Mapped[dt.date] = mapped_column(server_default=func.current_date())
     description: Mapped[str|None] = mapped_column(String(255), nullable=True)
     ignore: Mapped[bool] = mapped_column(server_default="false")
@@ -26,3 +26,4 @@ class Chain(Base):
 
     account: Mapped["Account"] = relationship(lazy="joined")
     category: Mapped["UserCategory"] = relationship(lazy="joined")
+    operations: Mapped["Operation"] = relationship(lazy="joined")

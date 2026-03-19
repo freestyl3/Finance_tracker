@@ -68,7 +68,10 @@ async def change_operation_visibility(
     service: OperationServiceDep,
     current_user: CurrentUser
 ):
-    return await service.change_visibility(operation_id, current_user.id)
+    try:
+        return await service.change_visibility(operation_id, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/transfers", response_model=TransferResponse)
 async def create_transfer(

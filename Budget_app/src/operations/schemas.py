@@ -56,15 +56,18 @@ class OperationCreate(OperationBase, OperationDateAmountValidator):
     )
 
 
-class OperationRead(OperationBase):
+class OperationInChainRead(OperationBase):
     id: uuid.UUID
     amount: Decimal
     ignore: bool
     category: CategoryRead
-    account: AccountRead
-    chain_id: uuid.UUID
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OperationRead(OperationInChainRead):
+    account: AccountRead
+    chain_id: uuid.UUID | None
 
 
 class TransferResponse(BaseModel):
