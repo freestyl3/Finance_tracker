@@ -121,5 +121,25 @@ class ChainService:
             await self.repo.session.rollback()
             raise ValueError(str(e))
     
-    async def get_all(self, user_id: uuid.UUID) -> list[ChainShortRead]:
+    async def get_all(self, user_id: uuid.UUID) -> list[Chain]:
         return await self.repo.get_all(user_id)
+    
+    async def get_by_id(
+            self,
+            chain_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> Chain:
+        chain = await self.repo.get_by_id(chain_id, user_id)
+
+        if not chain:
+            raise ValueError("Chain not found")
+        
+        operations = await self.op_repo.get_all_by(
+            user_id=user_id,
+            chain_id=chain_id
+        )
+
+        set_committed_value(chain, 'operations', operations)
+
+        return chain
+    
