@@ -1,8 +1,7 @@
 import uuid
-from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 
 from src.chains.schemas import ChainCreate
 from src.chains.models import Chain
@@ -97,3 +96,17 @@ class ChainRepository:
             return chain_obj
         return None
     
+    async def delete(
+            self,
+            chain_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool:
+        query = delete(Chain).where(
+            Chain.id == chain_id,
+            Chain.user_id == user_id
+        )
+
+        result = await self.session.execute(query)
+        await self.session.commit()
+
+        return result.rowcount > 0

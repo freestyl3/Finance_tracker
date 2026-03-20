@@ -47,3 +47,8 @@ class ChainShortRead(BaseModel):
 
 class ChainDetailRead(ChainShortRead):
     operations: list[OperationInChainRead]
+
+
+class ChainOperationsUpdate(BaseModel):
+    operation_ids: list[uuid.UUID] = Field(description="ID операций")
+    category_id: uuid.UUID | None = Field(None, description="ID категории")

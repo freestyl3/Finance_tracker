@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, Select, delete, func, update, not_
+from sqlalchemy import select, Select, delete, func, update, not_, or_
 from sqlalchemy.orm import joinedload, selectinload
 
 from src.base.repository import BaseRepository
@@ -161,11 +161,15 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
     async def update_with_chain(
             self,
             operation_uuids: list[uuid.UUID],
-            chain_id: uuid.UUID
+            chain_id: uuid.UUID,
+            user_id: uuid.UUID
     ) -> list[Operation]:
         query = (
             update(Operation)
-            .where(Operation.id.in_(operation_uuids))
+            .where(
+                Operation.user_id == user_id,
+                Operation.id.in_(operation_uuids)
+            )
             .values(chain_id=chain_id, ignore=False)
             .returning(Operation)
         )
@@ -176,7 +180,8 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
     async def get_operations_for_chain(
             self,
             operation_ids: list[uuid.UUID],
-            user_id: uuid.UUID
+            user_id: uuid.UUID,
+            chain_id: uuid.UUID | None = None
     ) -> list[Operation]:
         query = (
             select(Operation)
@@ -186,10 +191,19 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
             )
             .where(
                 Operation.user_id == user_id,
-                Operation.id.in_(operation_ids),
-                Operation.chain_id.is_(None)
+                Operation.id.in_(operation_ids)
             )
         )
+
+        if not chain_id:
+            query = query.where(Operation.chain_id.is_(None))
+        else:
+            query = query.where(
+                or_(
+                    Operation.chain_id.is_(None),
+                    Operation.chain_id == chain_id
+                )
+            )
 
         result = await self.session.scalars(query)
         return result.unique().all()

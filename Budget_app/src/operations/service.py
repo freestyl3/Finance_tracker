@@ -122,6 +122,9 @@ class OperationService:
 
         if not operation:
             raise ValueError("Operation not found or you don't have permission")
+        
+        if operation.chain_id:
+            raise ValueError("Can't delete operation inside chain. Remove operation from chain first")
 
         account_id = update_data.account_id or operation.account_id
         category_id = update_data.category_id or operation.category_id
@@ -182,28 +185,32 @@ class OperationService:
     async def delete(self, operation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         operation = await self.repo.get_by_id(operation_id, user_id)
         
-        if operation:
-            await self._update_account_balance(
-                account_id=operation.account_id,
-                delta=-operation.amount,
-                user_id=user_id
+        if not operation:
+            raise ValueError("Operation not found or you don't have permission")
+        
+        if operation.chain_id:
+            raise ValueError("Can't delete operation inside chain. Remove operation from chain first")
+        
+        await self._update_account_balance(
+            account_id=operation.account_id,
+            delta=-operation.amount,
+            user_id=user_id
+        )
+
+        if operation.related_operation_id:
+            related_operation = await self.repo.get_by_id(
+                operation.related_operation_id,
+                user_id
             )
 
-            if operation.related_operation_id:
-                related_operation = await self.repo.get_by_id(
-                    operation.related_operation_id,
-                    user_id
-                )
+            await self.repo.delete(related_operation)
 
-                await self.repo.delete(related_operation)
-
-                await self._update_account_balance(
-                    account_id=related_operation.account_id,
-                    delta=-related_operation.amount,
-                    user_id=user_id
-                )
-        else:
-            raise ValueError("Operation not found or you don't have permission")
+            await self._update_account_balance(
+                account_id=related_operation.account_id,
+                delta=-related_operation.amount,
+                user_id=user_id
+            )
+            
 
         return await self.repo.delete(operation)
     
@@ -216,17 +223,5 @@ class OperationService:
 
         if not operation:
             raise ValueError("Operation not found")
-
-        # delta = operation.amount
-
-        # if operation.ignore:
-        #     delta = -delta
-        
-        # await self._update_account_balance(
-        #     account_id=operation.account_id,
-        #     delta=delta,
-        #     user_id=user_id
-        # )
-
         return operation
             
