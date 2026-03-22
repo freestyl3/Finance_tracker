@@ -20,7 +20,12 @@ def create_access_token(data: dict) -> str:
 
     expire = dt.datetime.now(dt.timezone.utc) + \
         dt.timedelta(minutes=settings.auth.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": "access"
+        }
+    )
 
     encoded_jwt = jwt.encode(
         to_encode,
@@ -30,7 +35,27 @@ def create_access_token(data: dict) -> str:
 
     return encoded_jwt
 
-def decode_access_token(token: str) -> dict | None:
+def create_refresh_token(data: dict) -> str:
+    to_encode = data.copy()
+
+    expire = dt.datetime.now(dt.timezone.utc) + \
+        dt.timedelta(minutes=settings.auth.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": "refresh"
+        }
+    )
+
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.auth.SECRET_KEY,
+        algorithm=settings.auth.ALGORITHM
+    )
+
+    return encoded_jwt
+
+def decode_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(
             token,

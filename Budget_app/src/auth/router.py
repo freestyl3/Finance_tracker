@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from src.auth.dependencies import get_user_repository, get_auth_service, CurrentUser
-from src.auth.schemas import UserCreate, UserRead, Token
+from src.auth.dependencies import (
+    get_user_repository, get_auth_service, CurrentUser, validate_refresh_token
+)
+from src.auth.schemas import UserCreate, UserRead, TokenResponse
 from src.auth.repository import UserRepository
-from src.auth.security import create_access_token
+from src.auth.security import create_access_token, create_refresh_token
 from src.auth.service import AuthService
 from src.auth.models import User
 
@@ -31,8 +33,8 @@ async def register_user(
     
     return user
 
-@router.post("/login", response_model=Token)
-async def login_for_access_token(
+@router.post("/login", response_model=TokenResponse)
+async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service)
 ):
@@ -49,9 +51,26 @@ async def login_for_access_token(
         )
     
     access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
-    token = Token(
+    token = TokenResponse(
         access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer"
+    )
+
+    return token
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(
+    user_id: str = Depends(validate_refresh_token) 
+):
+    access_token = create_access_token(data={"sub": str(user_id)})
+    refresh_token = create_refresh_token(data={"sub": str(user_id)})
+
+    token = TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer"
     )
 

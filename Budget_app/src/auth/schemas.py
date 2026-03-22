@@ -19,6 +19,7 @@ class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class Token(BaseModel):
+class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
