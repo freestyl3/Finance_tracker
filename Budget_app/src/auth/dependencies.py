@@ -23,10 +23,9 @@ def get_auth_service(
 ):
     return AuthService(user_repo)
 
-async def get_current_user(
-        token: str = Depends(oauth2_scheme),
-        user_repo: UserRepository = Depends(get_user_repository)
-) -> User:
+def get_user_id(
+        token: str = Depends(oauth2_scheme)
+) -> uuid.UUID:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials.",
@@ -44,14 +43,22 @@ async def get_current_user(
         raise credentials_exception
     
     try:
-        user_id = uuid.UUID(user_id_str)
+        return uuid.UUID(user_id_str)
     except ValueError:
         raise credentials_exception
-    
+
+async def get_current_user(
+        user_id: uuid.UUID = Depends(get_user_id),
+        user_repo: UserRepository = Depends(get_user_repository)
+) -> User:    
     user = await user_repo.get_by_id(user_id)
 
     if not user:
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
     
     return user
     
@@ -61,3 +68,4 @@ async def ensure_user_is_staff(user: User = Depends(get_current_user)):
     raise HTTPException(status_code=403, detail="You don`t have permission!")
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+CurrentUserID = Annotated[uuid.UUID, Depends(get_user_id)]

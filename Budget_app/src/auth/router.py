@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from src.auth.dependencies import get_user_repository, get_auth_service, get_current_user
+from src.auth.dependencies import get_user_repository, get_auth_service, CurrentUser
 from src.auth.schemas import UserCreate, UserRead, Token
 from src.auth.repository import UserRepository
 from src.auth.security import create_access_token
@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/me", response_model=UserRead)
 async def read_users_me(
-    current_user: User = Depends(get_current_user)
+    current_user: CurrentUser
 ):
     return current_user
 

@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, Response, Query
 from fastapi_filter import FilterDepends
 
 from src.operations.dependencies import OperationServiceDep, TransferServiceDep
-from src.auth.dependencies import CurrentUser
+from src.auth.dependencies import CurrentUserID
 from src.operations.schemas import (
     OperationRead, OperationCreate, OperationUpdate, TransferCreate,
     TransferResponse, TransferUpdate
@@ -18,22 +18,22 @@ router = APIRouter()
 async def create_operation(
     operation: OperationCreate,
     service: OperationServiceDep,
-    current_user: CurrentUser
+    user_id: CurrentUserID
 ):
     try:
-        return await service.create(operation, current_user.id)
+        return await service.create(operation, user_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
 @router.get("/", response_model=list[OperationRead])
 async def get_operations(
     service: OperationServiceDep,
-    current_user: CurrentUser,
+    user_id: CurrentUserID,
     filters: OperationFilter = FilterDepends(OperationFilter),
     pagination: PaginationParams = Depends()
 ):
     return await service.get_all(
-        user_id=current_user.id,
+        user_id=user_id,
         filters=filters,
         pagination=pagination
     )
@@ -43,10 +43,10 @@ async def update_operation(
     operation_id: uuid.UUID,
     service: OperationServiceDep,
     update_data: OperationUpdate,
-    current_user: CurrentUser
+    user_id: CurrentUserID
 ):
     try:
-        return await service.update(operation_id, update_data, current_user.id)
+        return await service.update(operation_id, update_data, user_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
@@ -54,10 +54,10 @@ async def update_operation(
 async def delete_operation(
     operation_id: uuid.UUID,
     service: OperationServiceDep,
-    current_user: CurrentUser
+    user_id: CurrentUserID
 ):
     try:
-        await service.delete(operation_id, current_user.id)
+        await service.delete(operation_id, user_id)
         return Response(status_code=204)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -66,10 +66,10 @@ async def delete_operation(
 async def change_operation_visibility(
     operation_id: uuid.UUID,
     service: OperationServiceDep,
-    current_user: CurrentUser
+    user_id: CurrentUserID
 ):
     try:
-        return await service.change_visibility(operation_id, current_user.id)
+        return await service.change_visibility(operation_id, user_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -77,12 +77,12 @@ async def change_operation_visibility(
 async def create_transfer(
     service: TransferServiceDep,
     transfer: TransferCreate,
-    current_user: CurrentUser
+    user_id: CurrentUserID
 ):
     try:
         op_out, op_in = await service.create(
             create_data=transfer,
-            user_id=current_user.id
+            user_id=user_id
         )
         
         return TransferResponse(
@@ -97,13 +97,13 @@ async def update_transfer(
     operation_id: uuid.UUID,
     transfer_update: TransferUpdate,
     service: TransferServiceDep,
-    current_user: CurrentUser
+    user_id: CurrentUserID
 ):
     try:
         op_1, op_2 = await service.update(
             operation_id=operation_id,
             update_data=transfer_update,
-            user_id=current_user.id
+            user_id=user_id
         )
 
         return TransferResponse(
