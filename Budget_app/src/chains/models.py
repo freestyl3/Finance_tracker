@@ -24,6 +24,6 @@ class Chain(Base):
         nullable=True
     )
 
-    account: Mapped["Account"] = relationship(lazy="joined")
-    category: Mapped["UserCategory"] = relationship(lazy="joined")
-    operations: Mapped["Operation"] = relationship(lazy="joined")
+    account: Mapped["Account"] = relationship()
+    category: Mapped["UserCategory"] = relationship()
+    operations: Mapped[list["Operation"]] = relationship()

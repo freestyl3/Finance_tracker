@@ -55,6 +55,22 @@ async def add_operations_to_chain(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@router.post("/{chain_id}/operations/remove")
+async def remove_operations_from_chain(
+    chain_id: uuid.UUID,
+    update_schema: ChainOperationsUpdate,
+    service: ChainServiceDep,
+    user_id: CurrentUserID
+):
+    try:
+        return await service.remove_operations_from_chain(
+            chain_id,
+            update_schema,
+            user_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/{chain_id}")
 async def delete_chain(

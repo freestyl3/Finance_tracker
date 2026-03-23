@@ -2,6 +2,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.chains.schemas import ChainCreate
 from src.chains.models import Chain
@@ -10,6 +11,19 @@ from src.operations.models import Operation
 class ChainRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    def _get_stats_subqueries(self):
+        amount_subq = (
+            select(func.sum(Operation.amount))
+            .where(Operation.chain_id == Chain.id)
+            .scalar_subquery()
+        )
+        count_subq = (
+            select(func.count(Operation.id))
+            .where(Operation.chain_id == Chain.id)
+            .scalar_subquery()
+        )
+        return amount_subq, count_subq
 
     def _get_computed_fields_query(self, user_id: uuid.UUID):
         return (
@@ -43,46 +57,43 @@ class ChainRepository:
 
         return chain
     
-    async def get_all(
-            self,
-            user_id: uuid.UUID
-    ) -> list[Chain]:
-        stats_stmt = self._get_computed_fields_query(user_id)
+    async def get_all(self, user_id: uuid.UUID) -> list[Chain]:
+        amount_subq, count_subq = self._get_stats_subqueries()
 
         query = (
             select(
                 Chain,
-                stats_stmt.c.operations_count,
-                stats_stmt.c.operations_sum
+                amount_subq.label("computed_amount"),
+                count_subq.label("computed_count")
             )
-            .join(stats_stmt, Chain.id == stats_stmt.c.chain_id)
+            .options(
+                joinedload(Chain.account),
+                joinedload(Chain.category)
+            )
             .where(Chain.user_id == user_id)
+            .order_by(Chain.date.desc())
         )
 
         result = await self.session.execute(query)
         
         chains = []
-        for chain_obj, ops_count, ops_sum in result.unique():
-            chain_obj.operations_count = ops_count
-            chain_obj.amount = ops_sum
+        for chain_obj, amount, count in result.unique():
+            chain_obj.amount = amount or 0
+            chain_obj.operations_count = count or 0
             chains.append(chain_obj)
 
         return chains
-    
-    async def get_by_id(
-            self,
-            chain_id: uuid.UUID,
-            user_id: uuid.UUID
-    ) -> Chain | None:
-        stats_stmt = self._get_computed_fields_query(user_id)
+
+    async def get_by_id(self, chain_id: uuid.UUID, user_id: uuid.UUID) -> Chain | None:
+        amount_subq, count_subq = self._get_stats_subqueries()
 
         query = (
-            select(
-                Chain,
-                stats_stmt.c.operations_count,
-                stats_stmt.c.operations_sum
+            select(Chain, amount_subq.label("c_amount"), count_subq.label("c_count"))
+            .options(
+                joinedload(Chain.account),
+                joinedload(Chain.category),
+                selectinload(Chain.operations).joinedload(Operation.category)
             )
-            .join(stats_stmt, Chain.id == stats_stmt.c.chain_id)
             .where(Chain.id == chain_id, Chain.user_id == user_id)
         )
 
@@ -90,10 +101,11 @@ class ChainRepository:
         row = result.unique().one_or_none()
 
         if row:
-            chain_obj, operations_count, operations_sum = row
-            chain_obj.operations_count = operations_count
-            chain_obj.amount = operations_sum
+            chain_obj, amount, count = row
+            chain_obj.amount = amount or 0
+            chain_obj.operations_count = count or 0
             return chain_obj
+        
         return None
     
     async def delete(

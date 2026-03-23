@@ -18,8 +18,7 @@ class UserCategory(BaseCategory):
     )
 
     operations: Mapped[list["Operation"]] = relationship(
-        back_populates="category",
-        lazy="joined"
+        back_populates="category"
     )
 
     __table_args__ = (

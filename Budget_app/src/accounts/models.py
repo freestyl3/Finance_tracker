@@ -23,8 +23,7 @@ class Account(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="accounts")
     operations: Mapped[list["Operation"]] = relationship(
-        back_populates="account",
-        lazy="joined"
+        back_populates="account"
     )
 
     __table_args__ = (

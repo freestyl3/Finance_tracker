@@ -27,8 +27,11 @@ class ChainMetadata():
 
 class ChainCreate(BaseModel, OperationDateAmountValidator):
     operation_uuids: list[uuid.UUID] = Field(description="Список ID операций")
-    category_id: uuid.UUID = Field(description="ID категории")
-    date: dt.date | None = Field(description="Дата цепочки")
+    category_id: uuid.UUID | None = Field(None, description="ID категории")
+    date: dt.date | None = Field(
+        default_factory=dt.date.today,
+        description="Дата цепочки"
+    )
     description: str | None = Field(None, description="Необязательное описание")
 
 

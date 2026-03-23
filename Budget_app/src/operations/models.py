@@ -32,12 +32,10 @@ class Operation(Base):
     )
     
     category: Mapped["UserCategory"] = relationship(
-        back_populates="operations",
-        lazy="joined"
+        back_populates="operations"
     )
     account: Mapped["Account"] = relationship(
-        back_populates="operations",
-        lazy="joined"
+        back_populates="operations"
     )
 
     __table_args__ = (

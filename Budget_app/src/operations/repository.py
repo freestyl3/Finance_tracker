@@ -122,46 +122,10 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
         await self.session.commit()
         return result.unique().one_or_none()
     
-    async def get_info_for_chain_validation(
-            self,
-            operation_uuids: list[uuid.UUID],
-            user_id: uuid.UUID
-    ):
-        query = (
-            select(
-                Operation.account_id,
-                UserCategory.type,
-                func.count(Operation.id).over().label("found_count")
-            )
-            .join(UserCategory, Operation.category_id == UserCategory.id)
-            .where(
-                Operation.user_id == user_id,
-                Operation.id.in_(operation_uuids),
-                Operation.chain_id.is_(None)
-            )
-            .distinct()
-        )
-
-        result = await self.session.execute(query)
-        return result.all()
-    
-    async def get_sum_of_operations(
-            self,
-            operation_uuids: list[uuid.UUID],
-            user_id: uuid.UUID
-        ) -> Decimal | None:
-        query = select(func.sum(Operation.amount)).where(
-            Operation.user_id == user_id,
-            Operation.id.in_(operation_uuids)
-        )
-
-        result = await self.session.scalars(query)
-        return result.unique().one_or_none()
-    
     async def update_with_chain(
             self,
             operation_uuids: list[uuid.UUID],
-            chain_id: uuid.UUID,
+            chain_id: uuid.UUID | None,
             user_id: uuid.UUID
     ) -> list[Operation]:
         query = (
@@ -177,11 +141,29 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
         result = await self.session.scalars(query)
         return result.unique().all()
     
+    async def get_all_operations_in_chain(
+            self,
+            chain_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> list[Operation]:
+        query = (
+            select(Operation)
+            .options(joinedload(Operation.category))
+            .where(
+                Operation.user_id == user_id,
+                Operation.chain_id == chain_id
+            )
+        )
+
+        result = await self.session.scalars(query)
+        return result.unique().all()
+    
     async def get_operations_for_chain(
             self,
             operation_ids: list[uuid.UUID],
             user_id: uuid.UUID,
-            chain_id: uuid.UUID | None = None
+            chain_id: uuid.UUID | None = None,
+            allow_free: bool = False
     ) -> list[Operation]:
         query = (
             select(Operation)
@@ -195,19 +177,91 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
             )
         )
 
-        if not chain_id:
-            query = query.where(Operation.chain_id.is_(None))
+        chain_conditions = []
+
+        if allow_free:
+            chain_conditions.append(Operation.chain_id.is_(None))
+
+        if chain_id:
+            chain_conditions.append(Operation.chain_id == chain_id)
+
+        if chain_conditions:
+            query = query.where(or_(*chain_conditions))
         else:
-            query = query.where(
-                or_(
-                    Operation.chain_id.is_(None),
-                    Operation.chain_id == chain_id
-                )
-            )
+            return []
 
         result = await self.session.scalars(query)
         return result.unique().all()
     
+    async def get_all_for_chain_update(self, user_id, chain_id, new_op_ids):
+        query = (
+            select(Operation)
+            .options(joinedload(Operation.category))
+            .where(
+                Operation.user_id == user_id,
+                or_(
+                    Operation.chain_id == chain_id,
+                    Operation.id.in_(new_op_ids)
+                )
+            )
+        )
+        result = await self.session.execute(query)
+        return result.scalars().unique().all()
+    
+        
+    # async def get_info_for_chain_validation(
+    #         self,
+    #         operation_uuids: list[uuid.UUID],
+    #         user_id: uuid.UUID
+    # ):
+    #     query = (
+    #         select(
+    #             Operation.account_id,
+    #             UserCategory.type,
+    #             func.count(Operation.id).over().label("found_count")
+    #         )
+    #         .join(UserCategory, Operation.category_id == UserCategory.id)
+    #         .where(
+    #             Operation.user_id == user_id,
+    #             Operation.id.in_(operation_uuids),
+    #             Operation.chain_id.is_(None)
+    #         )
+    #         .distinct()
+    #     )
+
+    #     result = await self.session.execute(query)
+    #     return result.all()
+    
+    # async def get_sum_of_operations(
+    #         self,
+    #         operation_uuids: list[uuid.UUID],
+    #         user_id: uuid.UUID
+    #     ) -> Decimal | None:
+    #     query = select(func.sum(Operation.amount)).where(
+    #         Operation.user_id == user_id,
+    #         Operation.id.in_(operation_uuids)
+    #     )
+
+    #     result = await self.session.scalars(query)
+    #     return result.unique().one_or_none()
+    
+    # async def count_by_chain_id(
+    #         self,
+    #         chain_id: uuid.UUID,
+    #         user_id: uuid.UUID
+    # ) -> int | None:
+    #     query = (
+    #         select(
+    #             func.count(Operation.id)
+    #         )
+    #         .where(
+    #             Operation.user_id == user_id,
+    #             Operation.chain_id == chain_id
+    #         )
+    #     )
+
+    #     result = await self.session.execute(query)
+    #     return result.one_or_none()
     # async def get_by_id(
     #         self,
     #         operation_id: uuid.UUID,
