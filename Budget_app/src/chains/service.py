@@ -7,7 +7,8 @@ from sqlalchemy.orm.attributes import set_committed_value
 from src.chains.repository import ChainRepository
 from src.operations.repository import OperationRepository
 from src.chains.schemas import (
-    ChainMetadata, ChainCreate, ChainDetailRead, ChainOperationsUpdate
+    ChainMetadata, ChainCreate, ChainDetailRead, ChainOperationsUpdate,
+    ChainUpdate
 )
 from src.chains.models import Chain
 from src.common.enums import OperationType
@@ -237,15 +238,55 @@ class ChainService:
 
         return chain
     
+    async def update(
+            self,
+            chain_id: uuid.UUID,
+            update_schema: ChainUpdate,
+            user_id: uuid.UUID
+    ) -> ChainDetailRead:
+        chain = await self.get_by_id(chain_id, user_id)
+
+        if not chain.category_id:
+            update_schema.category_id = None
+
+        if not update_schema.model_dump(exclude_none=True):
+            return chain
+
+        if update_schema.category_id:
+            category = await self.cat_repo.get_by_id(
+                update_schema.category_id,
+                user_id=user_id
+            )
+
+            if not category:
+                raise ValueError("Category not found")
+            
+            if category.type != chain.category.type:
+                raise ValueError(f"Required category type: {chain.category.type}")
+            
+        return await self.repo.update(chain, update_schema)
+    
     async def delete(
             self,
             chain_id: uuid.UUID,
+            cascade: bool,
             user_id: uuid.UUID
     ) -> bool:
+        if cascade:
+            chain = await self.get_by_id(chain_id, user_id)
+
+            await self.op_repo.delete_chain_operations(chain_id, user_id)
+            await self.acc_repo.update_balance(
+                account_id=chain.account_id,
+                delta=-chain.amount,
+                user_id=user_id
+            )
+        
         deleted = await self.repo.delete(chain_id, user_id)
 
         if not deleted:
             raise ValueError("Chain not found")
+        
         return deleted
     
     async def add_operations_into_chain(

@@ -3,10 +3,9 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.db_helper import db_helper
 from src.auth.repository import UserRepository
+from src.database.repositories import get_user_repository
 from src.auth.service import AuthService
 from src.auth.models import User
 from src.auth.security import decode_token
@@ -16,10 +15,6 @@ oauth2_scheme = OAuth2PasswordBearer(
     refreshUrl="/auth/refresh"
 )
 
-def get_user_repository(
-        session: AsyncSession = Depends(db_helper.session_dependency)
-) -> UserRepository:
-    return UserRepository(session)
 
 def get_auth_service(
         user_repo: UserRepository = Depends(get_user_repository)

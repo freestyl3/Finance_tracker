@@ -1,27 +1,17 @@
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.db_helper import db_helper
 from src.operations.repository import OperationRepository
-from src.operations.service import OperationService
 from src.accounts.repository import AccountRepository
-from src.accounts.dependencies import get_account_repository
 from src.categories.user_categories.repository import UserCategoryRepository
-from src.categories.user_categories.dependecies import get_user_category_repository
 from src.operations.transfer_repository import TransferRepository
+from src.database.repositories import(
+    get_operation_repository, get_account_repository, get_transfer_repository,
+    get_user_category_repository
+)
+from src.operations.service import OperationService
 from src.operations.transfer_service import TransferService
-
-def get_operation_repository(
-        session: AsyncSession = Depends(db_helper.session_dependency)
-) -> OperationRepository:
-    return OperationRepository(session)
-
-def get_transfer_repository(
-        session: AsyncSession = Depends(db_helper.session_dependency)
-) -> TransferRepository:
-    return TransferRepository(session)
 
 def get_operation_service(
         operation_repo: OperationRepository = Depends(get_operation_repository),

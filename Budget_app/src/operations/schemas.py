@@ -8,7 +8,7 @@ from src.common.enums import OperationType
 from src.categories.base.schemas import CategoryRead
 from src.accounts.schemas import AccountRead
 
-class OperationDateAmountValidator:
+class OperationDateValidator:
     @field_validator("date")
     @classmethod
     def validate_date(cls, v: dt.date | None) -> dt.date:
@@ -38,7 +38,7 @@ class OperationBase(BaseModel):
     )
 
 
-class TransferCreate(OperationBase, OperationDateAmountValidator):
+class TransferCreate(OperationBase, OperationDateValidator):
     account_from: uuid.UUID = Field(
         description="ID счета, с которого уходит перевод"
     )
@@ -47,7 +47,7 @@ class TransferCreate(OperationBase, OperationDateAmountValidator):
     )
     
 
-class OperationCreate(OperationBase, OperationDateAmountValidator):
+class OperationCreate(OperationBase, OperationDateValidator):
     category_id: uuid.UUID = Field(
         description="ID категории операции"
     )
@@ -75,7 +75,7 @@ class TransferResponse(BaseModel):
     deposit: OperationRead
 
 
-class OperationUpdate(BaseModel, OperationDateAmountValidator):
+class OperationUpdate(BaseModel, OperationDateValidator):
     amount: Decimal | None = Field(
         None,
         gt=0,
@@ -100,7 +100,7 @@ class OperationUpdate(BaseModel, OperationDateAmountValidator):
     )
 
 
-class TransferUpdate(BaseModel, OperationDateAmountValidator):
+class TransferUpdate(BaseModel, OperationDateValidator):
     amount: Decimal | None = Field(
         None,
         gt=0,

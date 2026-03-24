@@ -43,10 +43,7 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
             user_id: int
     ) -> Operation:
         operation = Operation(**operation_data.model_dump(), user_id=user_id)
-        
         self.session.add(operation)
-        await self.session.commit()
-        await self.session.refresh(operation)
 
         return operation
 
@@ -208,6 +205,17 @@ class OperationRepository(BaseRepository[Operation, OperationUpdate]):
         result = await self.session.execute(query)
         return result.scalars().unique().all()
     
+    async def delete_chain_operations(
+            self,
+            chain_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool:
+        query = delete(Operation).where(
+            Operation.user_id == user_id, Operation.chain_id == chain_id
+        )
+
+        result = await self.session.execute(query)
+        return result.rowcount > 0
         
     # async def get_info_for_chain_validation(
     #         self,

@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, Query
 
 from src.auth.dependencies import CurrentUserID
 from src.chains.schemas import (
-    ChainCreate, ChainDetailRead, ChainShortRead, ChainOperationsUpdate
+    ChainCreate, ChainDetailRead, ChainShortRead, ChainOperationsUpdate,
+    ChainUpdate
 )
 from src.chains.dependencies import ChainServiceDep
 from src.pagination import PaginationParams
@@ -72,14 +73,31 @@ async def remove_operations_from_chain(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.delete("/{chain_id}")
-async def delete_chain(
+@router.put("/{chain_id}", response_model=ChainDetailRead)
+async def update_chain(
     chain_id: uuid.UUID,
+    update_schema: ChainUpdate,
     service: ChainServiceDep,
     user_id: CurrentUserID
 ):
     try:
-        await service.delete(chain_id, user_id)
+        return await service.update(
+            chain_id=chain_id,
+            update_schema=update_schema,
+            user_id=user_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/{chain_id}")
+async def delete_chain(
+    chain_id: uuid.UUID,
+    service: ChainServiceDep,
+    user_id: CurrentUserID,
+    cascade: bool = Query(False, description="Если True, будут удалены и все операции внутри цепочки")
+):
+    try:
+        await service.delete(chain_id, cascade, user_id)
         return Response(status_code=204)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

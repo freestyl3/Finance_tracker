@@ -1,10 +1,10 @@
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func, delete, update
 from sqlalchemy.orm import joinedload, selectinload
 
-from src.chains.schemas import ChainCreate
+from src.chains.schemas import ChainCreate, ChainUpdate
 from src.chains.models import Chain
 from src.operations.models import Operation
 
@@ -107,6 +107,24 @@ class ChainRepository:
             return chain_obj
         
         return None
+    
+    async def update(
+            self,
+            chain: Chain,
+            update_data: ChainUpdate
+    ) -> Chain:
+        data = update_data.model_dump(
+            exclude_unset=True,
+            exclude_none=True
+        )
+
+        for key, value in data.items():
+            setattr(chain, key, value)
+
+        await self.session.commit()
+        await self.session.refresh(chain)
+
+        return chain
     
     async def delete(
             self,

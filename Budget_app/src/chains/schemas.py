@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from src.common.enums import OperationType
 from src.accounts.schemas import AccountRead
-from src.operations.schemas import OperationDateAmountValidator
+from src.operations.schemas import OperationDateValidator
 from src.categories.base.schemas import CategoryRead
 from src.operations.schemas import OperationInChainRead
 
@@ -25,7 +25,7 @@ class ChainMetadata():
     suggested_type: OperationType | None
 
 
-class ChainCreate(BaseModel, OperationDateAmountValidator):
+class ChainCreate(BaseModel, OperationDateValidator):
     operation_uuids: list[uuid.UUID] = Field(description="Список ID операций")
     category_id: uuid.UUID | None = Field(None, description="ID категории")
     date: dt.date | None = Field(
@@ -55,3 +55,8 @@ class ChainDetailRead(ChainShortRead):
 class ChainOperationsUpdate(BaseModel):
     operation_ids: list[uuid.UUID] = Field(description="ID операций")
     category_id: uuid.UUID | None = Field(None, description="ID категории")
+
+class ChainUpdate(BaseModel, OperationDateValidator):
+    description: str | None = Field(None, description="Необязательное описание")
+    category_id: uuid.UUID | None = Field(None, description="ID категории")
+    date: dt.date | None = Field(None, description="Дата цепочки")
