@@ -1,6 +1,5 @@
 import uuid
 
-from fastapi import HTTPException, status, Response
 from sqlalchemy.exc import IntegrityError
 
 from src.categories.system_categories.repository import SystemCategoryRepository
@@ -25,10 +24,7 @@ class SystemCategoryService:
 
             return category
         except IntegrityError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Duplicate system category in base!"
-            )
+            raise ValueError("Duplicate system category in base!")
     
     async def get_all(self) -> list[SystemCategory]:
         return list(await self.repo.get_all())
@@ -63,7 +59,7 @@ class SystemCategoryService:
             raise ValueError(str(e))
     
     async def delete(self, category_id: uuid.UUID) -> bool:
-        await self.repo.delete(category_id)
+        result = await self.repo.delete(category_id)
         await self.repo.session.commit()
 
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return result

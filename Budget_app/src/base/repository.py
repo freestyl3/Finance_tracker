@@ -86,7 +86,6 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
             self.model.user_id == user_id
         )
         result = await self.session.execute(query)
-        await self.session.commit()
 
         return result.rowcount > 0
 
@@ -143,13 +142,18 @@ class ActiveNamedRepository(BaseRepository[ModelType, UpdateSchemaType]):
             self,
             model_id: uuid.UUID,
             user_id: uuid.UUID
-    ) -> bool:
-        obj = await self.get_by_id(model_id, user_id, only_active=True)
+    ) -> bool | None:
+        query = (
+            update(self.model)
+            .where(
+                self.model.id == model_id,
+                self.model.user_id == user_id,
+                self.model.is_active.is_(True)
+            )
+            .values(is_active=False)
+            .returning(self.model)
+        )
 
-        if obj:
-            obj.is_active = False
-
-            await self.session.commit()
-            await self.session.refresh(obj)
-            return True
-        return False
+        result = await self.session.execute(query)
+        
+        return result.scalars().one_or_none()

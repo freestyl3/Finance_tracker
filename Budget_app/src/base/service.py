@@ -1,12 +1,8 @@
 import uuid
-from datetime import date
 from typing import Generic, TypeVar
 
-from fastapi import HTTPException, status, Response
+from sqlalchemy.exc import IntegrityError
 
-from src.pagination import PaginationParams
-# from src.reports.schemas import ReportFilter
-# from src.reports.utils import check_date_order, generate_csv_report, get_month_range
 from src.base.repository import (
     BaseRepository, ActiveNamedRepository, ModelType, UpdateSchemaType
 )
@@ -39,16 +35,28 @@ class BaseService(Generic[RepositoryType]):
             model_update: UpdateSchemaType,
             user_id: uuid.UUID
     ) -> ModelType | None:
-        updated = await self.repo.update(model_id, model_update, user_id)
+        try:
+            updated = await self.repo.update(model_id, model_update, user_id)
 
-        if not updated:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail=f"{self.repo.model.__name__} not found"
-            )
+            if not updated:
+                raise ValueError(f"{self.repo.model.__name__} not found")
+            
+            await self.repo.session.commit()
+            await self.repo.session.refresh(updated)
         
-        return updated
+            return updated
+        except IntegrityError as e:
+            raise ValueError(str(e))
+        
+    async def delete(
+            self,
+            model_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool | None:
+        result = await self.repo.delete(model_id, user_id)
+        await self.repo.session.commit()
 
+        return result
 
 class ActiveNamedService(BaseService[ActiveNamedRepositoryType]):
     def __init__(self, repo: ActiveNamedRepository):
@@ -81,11 +89,14 @@ class ActiveNamedService(BaseService[ActiveNamedRepositoryType]):
             self,
             model_id: uuid.UUID,
             user_id: uuid.UUID
-    ) -> bool:
-        await self.repo.soft_delete(model_id, user_id)
+    ) -> bool | None:
+        result = await self.repo.soft_delete(model_id, user_id)
 
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-
+        if not result:
+            raise ValueError(f"{self.repo.model.__name__} not found")
+        
+        await self.repo.session.commit()
+        return result
 
 # class BaseOperationService:
 #     def __init__(self, repo: BaseOperationRepository):
