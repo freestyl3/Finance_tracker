@@ -36,12 +36,6 @@ class SystemCategoryService:
     ) -> list[SystemCategory]:
         return await list(self.repo.get_all_by_type(type))
     
-    async def get_available_for_user(
-            self,
-            user_id: uuid.UUID
-    ) -> list[SystemCategory]:
-        return list(await self.repo.get_available_for_user(user_id))
-    
     async def get_by_id(self, category_id: uuid.UUID) -> SystemCategory | None:
         return await self.repo.get_by_id(category_id)
     

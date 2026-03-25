@@ -9,9 +9,8 @@ from src.categories.base.schemas import (
     CategoryCreate, GroupedAvailableCategories, CategoryRead
 )
 from src.categories.user_categories.models import UserCategory
+from src.categories.system_categories.models import SystemCategory
 from src.common.enums import OperationType
-from src.categories.system_categories.service import SystemCategoryService
-from src.categories.system_categories.repository import SystemCategoryRepository
 
 class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
     def __init__(self, repo: UserCategoryRepository):
@@ -39,10 +38,9 @@ class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
             self,
             user_id: uuid.UUID
     ) -> GroupedAvailableCategories:
-        sys_repo = SystemCategoryRepository(self.repo.session)
-        sys_service = SystemCategoryService(sys_repo)
-
-        available_categories = await sys_service.get_available_for_user(user_id)
+        available_categories: list[SystemCategory] = list(
+            await self.repo.get_available_for_user(user_id)
+        )
 
         expense_categories = [
             cat.name for cat in available_categories
