@@ -18,14 +18,17 @@ class SystemCategoryService:
             category_create: CategoryCreate
     ) -> SystemCategory:
         try:
-            new_category = await self.repo.create(category_create)
+            category = await self.repo.create(category_create)
+
+            await self.repo.session.commit()
+            await self.repo.session.refresh(category)
+
+            return category
         except IntegrityError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Duplicate system category in base!"
             )
-        return new_category
-
     
     async def get_all(self) -> list[SystemCategory]:
         return list(await self.repo.get_all())
@@ -44,17 +47,23 @@ class SystemCategoryService:
             category_id: uuid.UUID,
             category_update: SystemCategoryUpdate
     ) -> SystemCategory:
-        updated = await self.repo.update(category_id, category_update)
+        try:
+            updated = await self.repo.update(category_id, category_update)
 
-        if not updated:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail="System category not found"
-            )
-        
-        return updated
+            if not updated:
+                await self.repo.session.rollback()
+                raise ValueError("System category not found")
+
+            await self.repo.session.commit()
+            await self.repo.session.refresh(updated)
+
+            return updated
+        except IntegrityError as e:
+            await self.repo.session.rollback()
+            raise ValueError(str(e))
     
     async def delete(self, category_id: uuid.UUID) -> bool:
         await self.repo.delete(category_id)
+        await self.repo.session.commit()
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)

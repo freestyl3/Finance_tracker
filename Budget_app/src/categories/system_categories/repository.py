@@ -1,7 +1,7 @@
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, Sequence, and_
+from sqlalchemy import select, delete, Sequence, update
 
 from src.categories.system_categories.models import SystemCategory
 from src.categories.base.schemas import CategoryCreate
@@ -17,8 +17,6 @@ class SystemCategoryRepository:
         category = SystemCategory(**category_data.model_dump())
 
         self.session.add(category)
-        await self.session.commit()
-        await self.session.refresh(category)
         return category
 
     async def get_all(self) -> Sequence[SystemCategory]:
@@ -47,23 +45,18 @@ class SystemCategoryRepository:
             category_id: uuid.UUID,
             category_data: SystemCategoryUpdate
     ) -> SystemCategory | None:
-        category = await self.get_by_id(category_id)
+        query = (
+            update(SystemCategory)
+            .where(SystemCategory.id == category_id)
+            .values(**category_data.model_dump())
+            .returning(SystemCategory)
+        )
 
-        if not category:
-            return None
-        
-        update_data = category_data.model_dump(exclude_unset=True)
-
-        for key, value in update_data.items():
-            setattr(category, key, value)
-
-        await self.session.commit()
-        await self.session.refresh(category)
-        return category
+        result = await self.session.scalars(query)
+        return result.unique().one_or_none()
     
     async def delete(self, category_id: uuid.UUID) -> bool:
         query = delete(SystemCategory).where(SystemCategory.id == category_id)
+        
         result = await self.session.execute(query)
-        await self.session.commit()
-
         return result.rowcount > 0
