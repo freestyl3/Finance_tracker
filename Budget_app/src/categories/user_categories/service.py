@@ -1,6 +1,5 @@
 import uuid
 
-from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
 from src.base.service import ActiveNamedService
@@ -21,18 +20,18 @@ class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
             category_create: CategoryCreate,
             user_id: uuid.UUID
     ) -> UserCategory | None:
-        try:
-            new_category = await self.repo.create(
-                category_data=category_create,
-                user_id=user_id
-            )
-        except IntegrityError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You already have category with this name and type!"
-            )
-        
-        return new_category
+        category = await self.repo.create(
+            category_data=category_create,
+            user_id=user_id
+        )
+
+        if not category:
+            await self.repo.session.rollback()
+            raise ValueError("You already have category with this name and type!")
+
+        await self.repo.session.commit()
+
+        return category
 
     async def get_available_categories(
             self,
@@ -73,39 +72,29 @@ class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
             categories: GroupedAvailableCategories,
             user_id: uuid.UUID
     ) -> list[UserCategory]:
-        results = []
-        for cat in categories.expense_categories:
-            try:
-                category = await self.create(
-                    CategoryCreate(name=cat, type=OperationType.EXPENSE),
-                    user_id
-                )
-                results.append(
-                    CategoryRead(
-                        id=category.id,
-                        name=category.name,
-                        type=category.type
-                    )
-                )
-            except IntegrityError:
-                continue
-        for cat in categories.income_categories:
-            try:
-                category = await self.create(
-                    CategoryCreate(name=cat, type=OperationType.INCOME),
-                    user_id
-                )
-                results.append(
-                    CategoryRead(
-                        id=category.id,
-                        name=category.name,
-                        type=category.type
-                    )
-                )
-            except IntegrityError:
-                continue
+        expense_categories = [
+            CategoryCreate(name=category, type=OperationType.EXPENSE)
+            for category in categories.expense_categories
+        ]
+        income_categories = [
+            CategoryCreate(name=category, type=OperationType.INCOME)
+            for category in categories.income_categories
+        ]
 
-        return results
+        categories_to_create = expense_categories + income_categories
+
+        if not categories_to_create:
+            return []
+
+        result = list(
+            await self.repo.batch_create(
+                categories=categories_to_create,
+                user_id=user_id
+            )
+        )
+
+        await self.repo.session.commit()
+        return result
 
     async def soft_delete(
             self,

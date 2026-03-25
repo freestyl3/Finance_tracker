@@ -18,7 +18,7 @@ async def get_available_categories(
 ):
     return await service.get_available_categories(user_id)
 
-@router.post("/batch_create")
+@router.post("/batch_create", response_model=list[CategoryRead])
 async def batch_create_categories(
     service: UserCategoryServiceDep,
     categories: GroupedAvailableCategories,
@@ -32,7 +32,10 @@ async def create_user_category(
     service: UserCategoryServiceDep,
     user_id: CurrentUserID
 ):
-    return await service.create(category, user_id)
+    try:
+        return await service.create(category, user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/", response_model=list[CategoryRead])
 async def get_all_user_categories(

@@ -2,6 +2,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, exists, Sequence
+from sqlalchemy.dialects.postgresql import insert
 
 from src.base.repository import ActiveNamedRepository
 from src.categories.base.schemas import CategoryCreate, CategoryUpdate
@@ -20,26 +21,51 @@ class UserCategoryRepository(ActiveNamedRepository[UserCategory, CategoryUpdate]
             user_id: uuid.UUID
     ) -> UserCategory | None:
         data_dict = category_data.model_dump()
-        existing_category = await self.get_by_name_and_type(
-            category_data.name,
-            category_data.type,
-            user_id=user_id,
-            only_active=False
+        data_dict["user_id"] = user_id
+
+        update_dict = {"is_active": True}
+
+        stmt = (
+            insert(UserCategory)
+            .values(**data_dict)
+            .on_conflict_do_update(
+                constraint="uq_user_categories_name_user_type",
+                set_=update_dict,
+                where=(UserCategory.is_active.is_(False))
+            )
+            .returning(UserCategory)
+        )        
+
+        result = await self.session.scalars(stmt)
+        await self.session.flush()
+
+        return result.one_or_none()
+    
+    async def batch_create(
+            self,
+            categories: list[CategoryCreate],
+            user_id: uuid.UUID
+    ) -> Sequence[UserCategory]:
+        values_to_insert =[
+            {**cat.model_dump(), "user_id": user_id} 
+            for cat in categories
+        ]
+
+        stmt = (
+            insert(UserCategory)
+            .values(values_to_insert)
+            .on_conflict_do_update(
+                constraint="uq_user_categories_name_user_type",
+                set_={"is_active": True},
+                where=(UserCategory.is_active.is_(False))
+            )
+            .returning(UserCategory)
         )
 
-        if not existing_category:
-            category = UserCategory(**data_dict, user_id=user_id)
-            self.session.add(category)
-        else:
-            category = existing_category
-            category.is_active = True
+        result = await self.session.scalars(stmt)
+        await self.session.flush()
 
-            for key, value in data_dict.items():
-                setattr(category, key, value)
-
-        await self.session.commit()
-        await self.session.refresh(category)
-        return category
+        return result.all()
     
     async def get_by_name_and_type(
             self,
@@ -72,15 +98,6 @@ class UserCategoryRepository(ActiveNamedRepository[UserCategory, CategoryUpdate]
         ).exists()
 
         query = select(SystemCategory).where(~user_has_category)
-        # query = select(SystemCategory).outerjoin(
-        #     UserCategory,
-        #     and_(
-        #         UserCategory.name == SystemCategory.name,
-        #         UserCategory.type == SystemCategory.type,
-        #         UserCategory.user_id == user_id,
-        #         UserCategory.is_active.is_(True)
-        #     )
-        # ).where(UserCategory.id.is_(None))
 
         result = await self.session.scalars(query)
         return result.all()

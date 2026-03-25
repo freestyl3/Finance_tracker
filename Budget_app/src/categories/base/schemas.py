@@ -34,5 +34,5 @@ class CategoryCreate(CategoryUpdate):
 
 
 class GroupedAvailableCategories(BaseModel):
-    expense_categories: list[str] # Содержит названия категорий
-    income_categories: list[str] # Содержит названия категорий
+    expense_categories: list[str]
+    income_categories: list[str]
