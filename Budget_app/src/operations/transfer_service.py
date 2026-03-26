@@ -10,7 +10,7 @@ from src.operations.schemas import TransferCreate, TransferUpdate
 from src.common.enums import OperationType
 from src.operations.models import Operation
 from src.accounts.models import Account
-from src.operations.repository import OperationRepository
+from src.operations.repositories.repository import OperationRepository
 
 class TransferService:
     def __init__(

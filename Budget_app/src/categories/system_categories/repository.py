@@ -7,7 +7,6 @@ from src.categories.system_categories.models import SystemCategory
 from src.categories.base.schemas import CategoryCreate
 from src.categories.system_categories.schemas import SystemCategoryUpdate
 from src.common.enums import OperationType
-from src.categories.user_categories.models import UserCategory
 
 class SystemCategoryRepository:
     def __init__(self, session: AsyncSession):
@@ -57,6 +56,6 @@ class SystemCategoryRepository:
     
     async def delete(self, category_id: uuid.UUID) -> bool:
         query = delete(SystemCategory).where(SystemCategory.id == category_id)
-        
+
         result = await self.session.execute(query)
         return result.rowcount > 0

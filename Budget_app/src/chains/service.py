@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.attributes import set_committed_value
 
 from src.chains.repository import ChainRepository
-from src.operations.repository import OperationRepository
+from src.operations.repositories.operation_chain_repository import OperationChainRepository
 from src.chains.schemas import (
     ChainMetadata, ChainCreate, ChainDetailRead, ChainOperationsUpdate,
     ChainUpdate
@@ -20,7 +20,7 @@ class ChainService:
     def __init__(
             self,
             chain_repository: ChainRepository,
-            operation_repository: OperationRepository,
+            operation_repository: OperationChainRepository,
             account_repository: AccountRepository,
             category_repository: UserCategoryRepository
     ):

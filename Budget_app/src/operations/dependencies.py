@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from src.operations.repository import OperationRepository
+from src.operations.repositories.repository import OperationRepository
 from src.accounts.repository import AccountRepository
 from src.categories.user_categories.repository import UserCategoryRepository
 from src.operations.transfer_repository import TransferRepository

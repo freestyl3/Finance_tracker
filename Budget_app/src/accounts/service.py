@@ -8,7 +8,7 @@ from src.accounts.repository import AccountRepository
 from src.accounts.schemas import AccountCreate
 from src.accounts.models import Account
 from src.categories.user_categories.repository import UserCategoryRepository
-from src.operations.repository import OperationRepository
+from src.operations.repositories.repository import OperationRepository
 from src.common.enums import OperationType
 from src.operations.schemas import OperationCreate
 

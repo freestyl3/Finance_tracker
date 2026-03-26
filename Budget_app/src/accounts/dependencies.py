@@ -4,7 +4,7 @@ from fastapi import Depends
 
 from src.accounts.repository import AccountRepository
 from src.categories.user_categories.repository import UserCategoryRepository
-from src.operations.repository import OperationRepository
+from src.operations.repositories.repository import OperationRepository
 from src.database.repositories import (
     get_account_repository, get_operation_repository,
     get_user_category_repository

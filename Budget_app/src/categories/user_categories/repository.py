@@ -11,7 +11,9 @@ from src.categories.system_categories.models import SystemCategory
 from src.common.enums import OperationType
 from src.operations.models import Operation
 
-class UserCategoryRepository(ActiveNamedRepository[UserCategory, CategoryUpdate]):
+class UserCategoryRepository(
+    ActiveNamedRepository[UserCategory, CategoryCreate, CategoryUpdate]
+):
     def __init__(self, session: AsyncSession):
         super().__init__(model=UserCategory, session=session)
 

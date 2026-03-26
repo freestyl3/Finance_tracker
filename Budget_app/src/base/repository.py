@@ -3,15 +3,27 @@ from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, Sequence, delete, update
+from sqlalchemy.orm.strategy_options import Load
 from pydantic import BaseModel
 
 ModelType = TypeVar("ModelType")
+CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
-class BaseRepository(Generic[ModelType, UpdateSchemaType]):
+class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: type[ModelType], session: AsyncSession):
         self.model = model
         self.session = session
+
+    async def create(
+            self,
+            create_data: CreateSchemaType,
+            user_id: uuid.UUID
+    ) -> ModelType:
+        obj = self.model(**create_data.model_dump(), user_id=user_id)
+
+        self.session.add(obj)
+        return obj
 
     async def get_one_by(
         self, 
@@ -48,18 +60,29 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
     async def get_by_id(
             self,
             model_id: uuid.UUID,
-            user_id: uuid.UUID
+            user_id: uuid.UUID,
+            *load_options: Load
     ) -> ModelType | None:
         query = select(self.model).where(
             self.model.id == model_id,
             self.model.user_id == user_id
         )
 
+        if load_options:
+            query = query.options(*load_options)
+
         result = await self.session.scalars(query)
         return result.unique().one_or_none()
     
-    async def get_all(self, user_id: uuid.UUID) -> Sequence[ModelType]:
+    async def get_all(
+            self,
+            user_id: uuid.UUID,
+            *load_options: Load
+    ) -> Sequence[ModelType]:
         query = select(self.model).where(self.model.user_id == user_id)
+
+        if load_options:
+            query = query.options(*load_options)
 
         result = await self.session.scalars(query)
         return result.unique().all()
@@ -85,12 +108,15 @@ class BaseRepository(Generic[ModelType, UpdateSchemaType]):
             self.model.id == model_id,
             self.model.user_id == user_id
         )
+        
         result = await self.session.execute(query)
 
         return result.rowcount > 0
 
 
-class ActiveNamedRepository(BaseRepository[ModelType, UpdateSchemaType]):
+class ActiveNamedRepository(
+    BaseRepository[ModelType, CreateSchemaType, UpdateSchemaType]
+):
     async def get_by_id(
             self,
             model_id: uuid.UUID,
