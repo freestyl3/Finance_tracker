@@ -22,11 +22,12 @@ class ChainMetadata():
     total_amount: Decimal
     account: "Account"
     operations: list["Operation"]
+    operations_count: int
     suggested_type: OperationType | None
 
 
 class ChainCreate(BaseModel, OperationDateValidator):
-    operation_uuids: list[uuid.UUID] = Field(description="Список ID операций")
+    operation_ids: list[uuid.UUID] = Field(description="Список ID операций")
     category_id: uuid.UUID | None = Field(None, description="ID категории")
     date: dt.date | None = Field(
         default_factory=dt.date.today,

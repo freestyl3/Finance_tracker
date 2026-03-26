@@ -41,7 +41,7 @@ async def get_chain(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-@router.post("/{chain_id}/operations/add")
+@router.post("/{chain_id}/operations/add", response_model=ChainDetailRead)
 async def add_operations_to_chain(
     chain_id: uuid.UUID,
     update_schema: ChainOperationsUpdate,
@@ -57,7 +57,7 @@ async def add_operations_to_chain(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-@router.post("/{chain_id}/operations/remove")
+@router.post("/{chain_id}/operations/remove", response_model=ChainDetailRead)
 async def remove_operations_from_chain(
     chain_id: uuid.UUID,
     update_schema: ChainOperationsUpdate,
