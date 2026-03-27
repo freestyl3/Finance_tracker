@@ -130,7 +130,6 @@ class ChainService:
         chain.amount += delta
 
         await self.repo.session.commit()
-        # await self.repo.session.refresh(chain)
 
         set_committed_value(chain, 'operations', operations)
 
@@ -335,6 +334,8 @@ class ChainService:
             raise ValueError("All operations in a chain must belong to the same account")
 
         try:
+            new_operations = []
+
             if to_add:
                 new_operations = await self._update_operations(
                     [operation.id for operation in to_add],
@@ -367,18 +368,6 @@ class ChainService:
             if op.id in update_schema.operation_ids
         ]
 
-        if not to_remove:
-            raise ValueError("No operations for remove from this chain")
-        
-        to_stay = [
-            op for op in chain.operations
-            if op.id not in update_schema.operation_ids
-        ]
-
-        if len(to_stay) < 2:
-            await self.delete(chain_id, user_id)
-            return None
-        
         prev_amount = chain.amount
         delta = -sum(operation.amount for operation in to_remove)
 
@@ -390,12 +379,25 @@ class ChainService:
             user_id
         )
 
+        if not to_remove and chain.category_id == new_category_id:
+            return chain
+        
+        to_stay = [
+            op for op in chain.operations
+            if op.id not in update_schema.operation_ids
+        ]
+
+        if len(to_stay) < 2:
+            await self.delete(chain_id, user_id)
+            return None
+
         try:
-            await self._update_operations(
-                [operation.id for operation in to_remove],
-                None,
-                user_id
-            )
+            if to_remove:
+                await self._update_operations(
+                    [operation.id for operation in to_remove],
+                    None,
+                    user_id
+                )
 
             return await self._finalize_chain_update(
                 chain,
