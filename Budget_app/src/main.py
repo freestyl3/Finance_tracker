@@ -7,10 +7,7 @@ from src.categories.system_categories.router import router as system_categories_
 from src.categories.user_categories.router import router as user_categories_router
 from src.operations.router import router as operations_router
 from src.chains.router import router as chain_router
-
-from src.auth.models import User
-from src.accounts.models import Account
-from src.operations.models import Operation
+from src.feed.router import router as feed_router
 
 app = FastAPI()
 
@@ -33,6 +30,7 @@ app.include_router(
     tags=["operations"]
 )
 app.include_router(chain_router, prefix="/chains", tags=["chains"])
+app.include_router(feed_router, prefix="/feed", tags=["feed"])
 
 @app.get("/")
 def root():

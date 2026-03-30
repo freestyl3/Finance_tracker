@@ -11,6 +11,7 @@ from src.operations.repositories.repository import OperationRepository
 from src.operations.repositories.operation_chain_repository import OperationChainRepository
 from src.operations.transfer_repository import TransferRepository
 from src.chains.repository import ChainRepository
+from src.feed.repository import FeedRepository
 
 async def get_account_repository(
         session: AsyncSession = Depends(db_helper.session_dependency),
@@ -51,3 +52,8 @@ async def get_operation_chain_repository(
         session: AsyncSession = Depends(db_helper.session_dependency)
 ) -> OperationChainRepository:
     return OperationChainRepository(session)
+
+async def get_feed_repository(
+        session: AsyncSession = Depends(db_helper.session_dependency)
+) -> FeedRepository:
+    return FeedRepository(session)
