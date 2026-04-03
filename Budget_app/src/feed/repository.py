@@ -3,7 +3,7 @@ import datetime as dt
 
 from sqlalchemy import select, func, union_all, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.operations.models import Operation
 from src.chains.models import Chain
@@ -27,15 +27,15 @@ class FeedRepository:
         else:
             end_date = dt.date(year, month + 1, 1) - dt.timedelta(days=1)
 
-        query = select(FeedItemORM).where(
-            FeedItemORM.user_id == user_id,
-            FeedItemORM.date.between(start_date, end_date)
-        )
-
         query = (
-            query.options(
+            select(FeedItemORM)
+            .where(
+                FeedItemORM.user_id == user_id,
+                FeedItemORM.date.between(start_date, end_date),
+            )
+            .options(
                 joinedload(FeedItemORM.account),
-                joinedload(FeedItemORM.category)
+                joinedload(FeedItemORM.category),
             )
             .order_by(desc(FeedItemORM.date))
         )
@@ -44,18 +44,12 @@ class FeedRepository:
         return result.scalars().all()
 
     async def get_next_active_month(self, user_id: uuid.UUID, before_date: dt.date):
-        # subq = union_all(
-        #     select(Operation.date).where(Operation.user_id == user_id, Operation.date < before_date),
-        #     select(Chain.date).where(Chain.user_id == user_id, Chain.date < before_date)
-        # ).subquery()
-        subq = select(
-            FeedItemORM.date
+        query = select(
+            func.max(FeedItemORM.date)
         ).where(
             FeedItemORM.user_id == user_id,
             FeedItemORM.date < before_date
-        ).subquery()
-        
-        query = select(func.max(subq.c.date))
+        )
         max_date = await self.session.scalar(query)
         
         if max_date:

@@ -3,7 +3,7 @@ import datetime as dt
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select, literal_column, union_all, String, Integer
+from sqlalchemy import select, literal_column, union_all, String, Integer, null
 from sqlalchemy.orm import Mapped, relationship
 
 from src.database.base import Base
@@ -38,7 +38,7 @@ class FeedItemORM(Base):
             Chain.date,
             Chain.description,
             Chain.ignore,
-            Chain.account_id,
+            null().label("account_id"),
             Chain.category_id,
             Chain.user_id,
             Chain.operations_count,
@@ -55,7 +55,7 @@ class FeedItemORM(Base):
     date: Mapped[dt.date]
     description: Mapped[str | None]
     ignore: Mapped[bool]
-    account_id: Mapped[uuid.UUID]
+    account_id: Mapped[uuid.UUID | None]
     category_id: Mapped[uuid.UUID | None]
     user_id: Mapped[uuid.UUID]
     operations_count: Mapped[int]

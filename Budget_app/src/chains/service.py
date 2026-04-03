@@ -12,7 +12,6 @@ from src.chains.schemas import (
 )
 from src.chains.models import Chain
 from src.common.enums import OperationType
-from src.accounts.repository import AccountRepository
 from src.categories.user_categories.repository import UserCategoryRepository
 from src.operations.models import Operation
 
@@ -21,12 +20,10 @@ class ChainService:
             self,
             chain_repository: ChainRepository,
             operation_repository: OperationChainRepository,
-            account_repository: AccountRepository,
             category_repository: UserCategoryRepository
     ):
         self.repo = chain_repository
         self.op_repo = operation_repository
-        self.acc_repo = account_repository
         self.cat_repo = category_repository
 
     def _suggest_type(self, amount: Decimal) -> OperationType | None:
@@ -70,11 +67,7 @@ class ChainService:
         if operations_count != len(operation_ids):
             raise ValueError("Some operations not found, not yours or already in other chain")
 
-        unique_account_ids = {operation.account_id for operation in operations}
         total_amount = sum(operation.amount for operation in operations)
-
-        if len(unique_account_ids) > 1:
-            raise ValueError("Can't union operations from different accounts")
 
         unique_types = {operation.category.type for operation in operations}
 
@@ -83,7 +76,6 @@ class ChainService:
         
         return ChainMetadata(
             total_amount=total_amount,
-            account=operations[0].account,
             operations=operations,
             operations_count=operations_count,
             suggested_type=self._suggest_type(total_amount)
@@ -165,7 +157,6 @@ class ChainService:
         ext_data = {}
 
         ext_data["amount"] = meta.total_amount
-        ext_data["account_id"] = meta.account.id
         ext_data["operations_count"] = meta.operations_count
 
         try:
@@ -195,7 +186,6 @@ class ChainService:
         return list(
             await self.repo.get_all(
                 user_id,
-                joinedload(Chain.account),
                 joinedload(Chain.category)
             )
         )
@@ -208,9 +198,9 @@ class ChainService:
         chain = await self.repo.get_by_id(
             chain_id,
             user_id,
-            joinedload(Chain.account),
             joinedload(Chain.category),
-            selectinload(Chain.operations).joinedload(Operation.category)
+            selectinload(Chain.operations).joinedload(Operation.category),
+            selectinload(Chain.operations).joinedload(Operation.account)
         )
 
         if not chain:
@@ -259,7 +249,6 @@ class ChainService:
             await self.repo.session.commit()
 
             set_committed_value(updated, 'category', category)
-            set_committed_value(updated, 'account', chain.account)
             set_committed_value(updated, 'operations', chain.operations)
             
             return updated
@@ -279,13 +268,13 @@ class ChainService:
             if not deleted:
                 raise ValueError("Chain not found")
             
-            if cascade:
-                await self.op_repo.delete_chain_operations(chain_id, user_id)
-                await self.acc_repo.update_balance(
-                    account_id=deleted.account_id,
-                    delta=-deleted.amount,
-                    user_id=user_id
-                )
+            # if cascade:
+            #     await self.op_repo.delete_chain_operations(chain_id, user_id)
+            #     await self.acc_repo.update_balance(
+            #         account_id=deleted.account_id,
+            #         delta=-deleted.amount,
+            #         user_id=user_id
+            #     )
 
             await self.repo.session.commit()
             return True
@@ -310,6 +299,11 @@ class ChainService:
 
         if len(requested_operations) != len(set(update_schema.operation_ids)):
             raise ValueError("Some operations were not found or don't belong to you")
+        
+        unique_types = {operation.category.type for operation in requested_operations}
+
+        if OperationType.TRANSFER in unique_types:
+            raise ValueError("Transfer can't be in chain")
 
         to_add = [
             operation for operation in requested_operations
@@ -329,9 +323,6 @@ class ChainService:
 
         if not to_add and chain.category_id == new_category_id:
             return chain
-        
-        if to_add and any(op.account_id != chain.account_id for op in to_add):
-            raise ValueError("All operations in a chain must belong to the same account")
 
         try:
             new_operations = []

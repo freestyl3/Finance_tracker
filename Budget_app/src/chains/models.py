@@ -9,7 +9,6 @@ from sqlalchemy import String, ForeignKey, Numeric, func
 from src.database.base import Base
 
 if TYPE_CHECKING:
-    from src.accounts.models import Account
     from src.categories.user_categories.models import UserCategory
     from src.operations.models import Operation
 
@@ -23,14 +22,10 @@ class Chain(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE")
     )
-    account_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("accounts.id", ondelete="CASCADE")
-    )
     category_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("user_categories.id", ondelete="SET NULL"),
         nullable=True
     )
 
-    account: Mapped["Account"] = relationship()
     category: Mapped["UserCategory"] = relationship()
     operations: Mapped[list["Operation"]] = relationship()

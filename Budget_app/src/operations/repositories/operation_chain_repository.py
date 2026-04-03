@@ -10,18 +10,31 @@ class OperationChainRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_all_operations_in_chain(
+    def _base_query(
+            self,
+            user_id: uuid.UUID
+    ):
+        return (
+            select(Operation)
+            .options(
+                joinedload(Operation.category),
+                joinedload(Operation.account)
+            )
+            .where(
+                Operation.user_id == user_id
+            )
+        )
+
+    async def get_chains_operations(
         self,
-        chain_id: uuid.UUID,
+        chain_ids: list[uuid.UUID] | None,
         user_id: uuid.UUID
     ) -> list[Operation]:
-        query = (
-            select(Operation)
-            .options(joinedload(Operation.category))
-            .where(
-                Operation.user_id == user_id,
-                Operation.chain_id == chain_id
-            )
+        if not chain_ids:
+            return []
+
+        query = self._base_query(user_id).where(
+            Operation.chain_id.in_(chain_ids)
         )
 
         result = await self.session.scalars(query)
@@ -34,16 +47,8 @@ class OperationChainRepository:
             chain_id: uuid.UUID | None = None,
             allow_free: bool = False
     ) -> list[Operation]:
-        query = (
-            select(Operation)
-            .options(
-                joinedload(Operation.category),
-                joinedload(Operation.account)
-            )
-            .where(
-                Operation.user_id == user_id,
-                Operation.id.in_(operation_ids)
-            )
+        query = self._base_query(user_id).where(
+            Operation.id.in_(operation_ids)
         )
 
         chain_conditions = []
@@ -61,19 +66,15 @@ class OperationChainRepository:
 
         result = await self.session.scalars(query)
         return result.unique().all()
-    
+
     async def get_all_for_chain_update(self, user_id, chain_id, new_op_ids):
-        query = (
-            select(Operation)
-            .options(joinedload(Operation.category))
-            .where(
-                Operation.user_id == user_id,
-                or_(
-                    Operation.chain_id == chain_id,
-                    Operation.id.in_(new_op_ids)
-                )
+        query = self._base_query(user_id).where(
+            or_(
+                Operation.chain_id == chain_id,
+                Operation.id.in_(new_op_ids)
             )
         )
+
         result = await self.session.execute(query)
         return result.scalars().unique().all()
     
@@ -83,7 +84,8 @@ class OperationChainRepository:
             user_id: uuid.UUID
     ) -> bool:
         query = delete(Operation).where(
-            Operation.user_id == user_id, Operation.chain_id == chain_id
+            Operation.chain_id == chain_id,
+            Operation.user_id == user_id            
         )
 
         result = await self.session.execute(query)

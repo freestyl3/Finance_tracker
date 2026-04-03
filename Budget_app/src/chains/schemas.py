@@ -7,20 +7,17 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, Field, ConfigDict
 
 from src.common.enums import OperationType
-from src.accounts.schemas import AccountRead
 from src.operations.schemas import OperationDateValidator
 from src.categories.base.schemas import CategoryRead
-from src.operations.schemas import OperationInChainRead
+from src.operations.schemas import OperationRead
 
 if TYPE_CHECKING:
-    from src.accounts.models import Account
     from src.operations.models import Operation
 
 
 @dataclass
 class ChainMetadata():
     total_amount: Decimal
-    account: "Account"
     operations: list["Operation"]
     operations_count: int
     suggested_type: OperationType | None
@@ -43,14 +40,13 @@ class ChainShortRead(BaseModel):
     ignore: bool
     date: dt.date
     description: str | None = Field(None)
-    account: AccountRead
     operations_count: int
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class ChainDetailRead(ChainShortRead):
-    operations: list[OperationInChainRead]
+    operations: list[OperationRead]
 
 
 class ChainOperationsUpdate(BaseModel):
