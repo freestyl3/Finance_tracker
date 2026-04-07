@@ -39,7 +39,7 @@ def create_refresh_token(data: dict) -> str:
     to_encode = data.copy()
 
     expire = dt.datetime.now(dt.timezone.utc) + \
-        dt.timedelta(minutes=settings.auth.REFRESH_TOKEN_EXPIRE_DAYS)
+        dt.timedelta(days=settings.auth.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update(
         {
             "exp": expire,

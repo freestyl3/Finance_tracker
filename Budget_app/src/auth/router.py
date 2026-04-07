@@ -63,7 +63,7 @@ async def login(
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
-    user_id: str = Depends(validate_refresh_token) 
+    user_id: str = Depends(validate_refresh_token)
 ):
     access_token = create_access_token(data={"sub": str(user_id)})
     refresh_token = create_refresh_token(data={"sub": str(user_id)})

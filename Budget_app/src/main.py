@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # from src.reports.router import router as reports_router
 from src.auth.router import router as auth_router
@@ -8,8 +9,17 @@ from src.categories.user_categories.router import router as user_categories_rout
 from src.operations.router import router as operations_router
 from src.chains.router import router as chain_router
 from src.feed.router import router as feed_router
+from src.core.config import settings
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors.ALLOW_ORIGINS,
+    allow_credentials=settings.cors.ALLOW_CREDENTIALS,
+    allow_methods=settings.cors.ALLOW_METHODS,
+    allow_headers=settings.cors.ALLOW_HEADERS,
+)
 
 # app.include_router(reports_router, prefix="/reports", tags=["reports"])
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
