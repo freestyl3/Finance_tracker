@@ -32,6 +32,16 @@ class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
         await self.repo.session.commit()
 
         return category
+    
+    async def get_all(
+            self,
+            user_id: uuid.UUID,
+            system: bool = False
+    ) -> list[UserCategory]:
+        return await self.repo.get_all_by(
+            user_id=user_id,
+            deletable=not(system)
+        )
 
     async def get_available_categories(
             self,
@@ -101,5 +111,8 @@ class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
             model_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> bool:
-        return await self.repo.delete(model_id, user_id)
+        result = await self.repo.delete(model_id, user_id)
+        await self.repo.session.commit()
+
+        return result
         

@@ -56,11 +56,11 @@ async def create_account(
         )
 
 @router.get("/", response_model=List[AccountRead])
-async def get_active_accounts(
+async def get_accounts(
     service: AccountServiceDep,
     user_id: CurrentUserID
 ):
-    return await service.get_all(user_id, only_active=True)
+    return await service.get_all(user_id, only_active=False)
 
 @router.put("/{account_id}", response_model=AccountRead)
 async def update_account(

@@ -2,9 +2,8 @@ import uuid
 
 from fastapi import APIRouter, Response, HTTPException
 
-from src.categories.base.schemas import (
-    CategoryCreate, CategoryRead, CategoryUpdate
-)
+from src.categories.base.schemas import CategoryCreate, CategoryUpdate
+from src.categories.user_categories.schemas import UserCategoryRead
 from src.categories.user_categories.dependecies import UserCategoryServiceDep
 from src.auth.dependencies import CurrentUserID
 from src.categories.base.schemas import GroupedAvailableCategories
@@ -18,7 +17,7 @@ async def get_available_categories(
 ):
     return await service.get_available_categories(user_id)
 
-@router.post("/batch_create", response_model=list[CategoryRead])
+@router.post("/batch_create", response_model=list[UserCategoryRead])
 async def batch_create_categories(
     service: UserCategoryServiceDep,
     categories: GroupedAvailableCategories,
@@ -26,7 +25,7 @@ async def batch_create_categories(
 ):
     return await service.batch_create(categories, user_id)
 
-@router.post("/", response_model=CategoryRead)
+@router.post("/", response_model=UserCategoryRead)
 async def create_user_category(
     category: CategoryCreate,
     service: UserCategoryServiceDep,
@@ -37,14 +36,14 @@ async def create_user_category(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/", response_model=list[CategoryRead])
+@router.get("/", response_model=list[UserCategoryRead])
 async def get_all_user_categories(
     service: UserCategoryServiceDep,
     user_id: CurrentUserID
 ):
     return await service.get_all(user_id)
 
-@router.put("/{category_id}", response_model=CategoryRead)
+@router.put("/{category_id}", response_model=UserCategoryRead)
 async def update_user_category(
     category_id: uuid.UUID,
     category_update: CategoryUpdate,
