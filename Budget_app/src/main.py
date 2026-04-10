@@ -11,6 +11,8 @@ from src.chains.router import router as chain_router
 from src.feed.router import router as feed_router
 from src.core.config import settings
 
+from src.exception_handlers import setup_exception_handlers
+
 app = FastAPI()
 
 app.add_middleware(
@@ -20,6 +22,8 @@ app.add_middleware(
     allow_methods=settings.cors.ALLOW_METHODS,
     allow_headers=settings.cors.ALLOW_HEADERS,
 )
+
+setup_exception_handlers(app)
 
 # app.include_router(reports_router, prefix="/reports", tags=["reports"])
 app.include_router(auth_router, prefix="/auth", tags=["auth"])

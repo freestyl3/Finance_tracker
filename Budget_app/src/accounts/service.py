@@ -10,7 +10,6 @@ from src.accounts.models import Account
 from src.categories.user_categories.repository import UserCategoryRepository
 from src.operations.repositories.repository import OperationRepository
 from src.common.enums import OperationType
-from src.operations.schemas import OperationCreate
 
 class AccountService(ActiveNamedService[AccountRepository]):
     def __init__(
@@ -46,8 +45,10 @@ class AccountService(ActiveNamedService[AccountRepository]):
             user_id: uuid.UUID
     ) -> Account:
         try:
+            data_dict = create_data.model_dump(exclude_unset=True)
+
             account = await self.repo.create(
-                account_data=create_data,
+                account_data=data_dict,
                 user_id=user_id
             )
 
@@ -61,12 +62,12 @@ class AccountService(ActiveNamedService[AccountRepository]):
                 )
 
                 await self.op_repo.create(
-                    OperationCreate.model_construct(
-                        amount=create_data.balance,
-                        description="Начальная корректировка счета",
-                        account_id=account.id,
-                        category_id=category.id
-                    ),
+                    {
+                        "amount": create_data.balance,
+                        "description": "Начальная корректировка счета",
+                        "account_id": account.id,
+                        "category_id": category.id
+                    },
                     user_id=user_id
                 )
 

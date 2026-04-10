@@ -1,26 +1,24 @@
 import uuid
 from typing import Generic, TypeVar
 
+from pydantic import BaseModel
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, Sequence, delete, update
 from sqlalchemy.orm.strategy_options import Load
-from pydantic import BaseModel
+# from pydantic import BaseModel
 
 ModelType = TypeVar("ModelType")
-CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
+# CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
-class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
+class BaseRepository(Generic[ModelType]):
     def __init__(self, model: type[ModelType], session: AsyncSession):
         self.model = model
         self.session = session
 
-    async def create(
-            self,
-            create_data: CreateSchemaType,
-            user_id: uuid.UUID
-    ) -> ModelType:
-        obj = self.model(**create_data.model_dump(), user_id=user_id)
+    async def create(self, create_data: dict, user_id: uuid.UUID) -> ModelType:
+        obj = self.model(**create_data, user_id=user_id)
 
         self.session.add(obj)
         return obj
@@ -90,14 +88,14 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def update(
             self,
             model_id: uuid.UUID,
-            update_data: UpdateSchemaType,
+            update_data: dict,
             user_id: uuid.UUID
     ) -> ModelType | None:
         query = update(self.model).where(
             self.model.id == model_id,
             self.model.user_id == user_id
         ).values(
-            **update_data.model_dump(exclude_unset=True)
+            **update_data
         ).returning(self.model)
 
         result = await self.session.scalars(query)
@@ -114,9 +112,7 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return result.rowcount > 0
 
 
-class ActiveNamedRepository(
-    BaseRepository[ModelType, CreateSchemaType, UpdateSchemaType]
-):
+class ActiveNamedRepository(BaseRepository[ModelType]):
     async def get_by_id(
             self,
             model_id: uuid.UUID,

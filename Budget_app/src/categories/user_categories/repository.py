@@ -5,31 +5,21 @@ from sqlalchemy import select, exists, Sequence
 from sqlalchemy.dialects.postgresql import insert
 
 from src.base.repository import ActiveNamedRepository
-from src.categories.base.schemas import CategoryCreate, CategoryUpdate
 from src.categories.user_categories.models import UserCategory
 from src.categories.system_categories.models import SystemCategory
 from src.common.enums import OperationType
 from src.operations.models import Operation
 
-class UserCategoryRepository(
-    ActiveNamedRepository[UserCategory, CategoryCreate, CategoryUpdate]
-):
+class UserCategoryRepository(ActiveNamedRepository[UserCategory]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=UserCategory, session=session)
 
-    async def create(
-            self,
-            category_data: CategoryCreate,
-            user_id: uuid.UUID
-    ) -> UserCategory | None:
-        data_dict = category_data.model_dump()
-        data_dict["user_id"] = user_id
-
+    async def create(self, create_data: dict) -> UserCategory:
         update_dict = {"is_active": True}
 
         stmt = (
             insert(UserCategory)
-            .values(**data_dict)
+            .values(**create_data)
             .on_conflict_do_update(
                 constraint="uq_user_categories_name_user_type",
                 set_=update_dict,
@@ -43,19 +33,10 @@ class UserCategoryRepository(
 
         return result.one_or_none()
     
-    async def batch_create(
-            self,
-            categories: list[CategoryCreate],
-            user_id: uuid.UUID
-    ) -> Sequence[UserCategory]:
-        values_to_insert =[
-            {**cat.model_dump(), "user_id": user_id} 
-            for cat in categories
-        ]
-
+    async def batch_create(self, create_data: list[dict]) -> Sequence[UserCategory]:
         stmt = (
             insert(UserCategory)
-            .values(values_to_insert)
+            .values(create_data)
             .on_conflict_do_update(
                 constraint="uq_user_categories_name_user_type",
                 set_={"is_active": True},

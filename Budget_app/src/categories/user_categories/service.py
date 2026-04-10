@@ -20,8 +20,11 @@ class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
             category_create: CategoryCreate,
             user_id: uuid.UUID
     ) -> UserCategory | None:
+        create_data = category_create.model_dump()
+        create_data["user_id"] = user_id
+
         category = await self.repo.create(
-            category_data=category_create,
+            category_data=create_data,
             user_id=user_id
         )
 
@@ -95,10 +98,15 @@ class UserCategoryService(ActiveNamedService[UserCategoryRepository]):
 
         if not categories_to_create:
             return []
+        
+        create_data =[
+            {**cat.model_dump(), "user_id": user_id} 
+            for cat in categories_to_create
+        ]
 
         result = list(
             await self.repo.batch_create(
-                categories=categories_to_create,
+                create_data=create_data,
                 user_id=user_id
             )
         )

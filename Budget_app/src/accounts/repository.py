@@ -6,12 +6,9 @@ from sqlalchemy import insert, update
 
 from src.base.repository import ActiveNamedRepository
 from src.accounts.models import Account
-from src.accounts.schemas import AccountCreate, AccountUpdate
 from src.common.enums import Currency
 
-class AccountRepository(
-    ActiveNamedRepository[Account, AccountCreate, AccountUpdate]
-):
+class AccountRepository(ActiveNamedRepository[Account]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=Account, session=session)
 

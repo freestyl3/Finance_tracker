@@ -1,11 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from src.auth.dependencies import (
-    get_user_repository, get_auth_service, CurrentUser, validate_refresh_token
-)
+from src.auth.dependencies import (get_auth_service, CurrentUser, validate_refresh_token)
 from src.auth.schemas import UserCreate, UserRead, TokenResponse
-from src.auth.repository import UserRepository
 from src.auth.security import create_access_token, create_refresh_token
 from src.auth.service import AuthService
 from src.auth.models import User
@@ -21,17 +18,9 @@ async def read_users_me(
 @router.post("/register", response_model=UserRead)
 async def register_user(
     user_create: UserCreate,
-    repo: UserRepository = Depends(get_user_repository)
+    repo: AuthService = Depends(get_auth_service)
 ):
-    user = await repo.create(user_create)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username or email already registered."
-        )
-    
-    return user
+    return await repo.create_user(user_create)
 
 @router.post("/login", response_model=TokenResponse)
 async def login(

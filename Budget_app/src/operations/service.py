@@ -72,16 +72,19 @@ class OperationService:
             create_data: OperationCreate,
             user_id: uuid.UUID
     ) -> Operation:
+        data_dict = create_data.model_dump(exclude_unset=True)
+
         category = await self._validate_category(
             category_id=create_data.category_id,
             user_id=user_id
         )
 
-        create_data.amount = self._validate_amount(category.type, create_data.amount)
+        # create_data.amount = self._validate_amount(category.type, create_data.amount)
+        data_dict["amount"] = self._validate_amount(category.type, create_data.amount)
         
         try:
             operation = await self.repo.create(
-                create_data=create_data,
+                create_data=data_dict,
                 user_id=user_id
             )
 
@@ -132,10 +135,12 @@ class OperationService:
             update_data: OperationUpdate,
             user_id: uuid.UUID
     ) -> Operation:
+        data_dict = update_data.model_dump(exclude_unset=True)
+
         try:
             await self.repo.update(
                 model_id=operation_id,
-                update_data=update_data,
+                update_data=data_dict,
                 user_id=user_id,
             )
 
@@ -209,11 +214,13 @@ class OperationService:
                         currency=operation.account.currency
                     )
             
-            update_data.amount = new_amount
+            data_dict = update_data.model_dump(exclude_unset=True)
+            # update_data.amount = new_amount
+            data_dict["amount"] = new_amount
 
             updated_operation = await self.repo.update(
                 model_id=operation_id,
-                update_data=update_data,
+                update_data=data_dict,
                 user_id=user_id
             )
 

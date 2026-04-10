@@ -142,6 +142,8 @@ class ChainService:
             allow_free=True
         )
         
+        data_dict = create_data = create_data.model_dump(exclude=["operation_ids",])
+
         if meta.suggested_type:
             if not create_data.category_id:
                 raise ValueError("Category is required for this chain sum")
@@ -152,19 +154,14 @@ class ChainService:
             if not category or category.type != meta.suggested_type:
                 raise ValueError(f"Required category type: {meta.suggested_type}")
         else:
-            create_data.category_id = None
+            data_dict["category_id"] = None
+            # create_data.category_id = None
 
-        ext_data = {}
-
-        ext_data["amount"] = meta.total_amount
-        ext_data["operations_count"] = meta.operations_count
+        data_dict["amount"] = meta.total_amount
+        data_dict["operations_count"] = meta.operations_count
 
         try:
-            chain = await self.repo.create(
-                create_data,
-                ext_data,
-                user_id
-            )
+            chain = await self.repo.create(data_dict, user_id)
 
             await self._update_operations(
                 create_data.operation_ids,
@@ -244,7 +241,7 @@ class ChainService:
                     if category.type != expected_type:
                         raise ValueError(f"Required category type: {expected_type}")
         try:
-            updated = await self.repo.update(chain_id, update_schema, user_id)
+            updated = await self.repo.update(chain_id, update_data, user_id)
 
             await self.repo.session.commit()
 

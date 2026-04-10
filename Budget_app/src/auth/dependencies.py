@@ -6,20 +6,32 @@ from fastapi.security import OAuth2PasswordBearer
 
 from src.auth.repository import UserRepository
 from src.database.repositories import get_user_repository
+# from src.categories.user_categories.repository import UserCategoryRepository
+# from src.database.repositories import get_user_category_repository
 from src.auth.service import AuthService
 from src.auth.models import User
 from src.auth.security import decode_token
+from src.core.uow import IUnitOfWork
+from src.infrasturcture.dependencies import get_uow
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login",
     refreshUrl="/auth/refresh"
 )
 
+async def get_auth_service(
+        uow: IUnitOfWork = Depends(get_uow)
+) -> AuthService:
+    return AuthService(uow)
 
-def get_auth_service(
-        user_repo: UserRepository = Depends(get_user_repository)
-):
-    return AuthService(user_repo)
+# async def get_auth_service(
+#         user_repository: UserRepository = Depends(get_user_repository),
+#         user_category_repository: UserCategoryRepository = Depends(get_user_category_repository)
+# ):
+#     return AuthService(
+#         user_repository=user_repository,
+#         user_category_repository=user_category_repository
+#     )
 
 def get_user_id(
         token: str = Depends(oauth2_scheme)

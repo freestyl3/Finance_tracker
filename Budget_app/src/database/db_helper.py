@@ -16,6 +16,10 @@ class DatabaseHelper:
             autocommit=False
         )
 
+    async def dispose(self):
+        await self.engine.dispose()
+
+    "Нужно будет удалить позже после переписывания репозиториев"
     async def session_dependency(self):
         async with self.session_factory() as session:
             yield session

@@ -7,13 +7,10 @@ from sqlalchemy.orm import joinedload, selectinload
 from src.base.repository import BaseRepository
 from src.operations.models import Operation
 from src.operations.filters import OperationFilter
-from src.operations.schemas import OperationCreate, OperationUpdate
 from src.pagination import PaginationParams
 from src.categories.user_categories.models import UserCategory
 
-class OperationRepository(
-    BaseRepository[Operation, OperationCreate, OperationUpdate]
-):
+class OperationRepository(BaseRepository[Operation]):
     def __init__(self, session: AsyncSession):
         super().__init__(Operation, session)
 
