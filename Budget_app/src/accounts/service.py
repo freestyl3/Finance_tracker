@@ -1,26 +1,29 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy.exc import IntegrityError
-
-from src.base.service import ActiveNamedService
 from src.accounts.repository import AccountRepository
-from src.accounts.schemas import AccountCreate
+from src.accounts.schemas import AccountCreate, AccountUpdate
 from src.accounts.models import Account
 from src.categories.user_categories.repository import UserCategoryRepository
 from src.operations.repositories.repository import OperationRepository
 from src.common.enums import OperationType
+from src.core.uow import IUnitOfWork
 
-class AccountService(ActiveNamedService[AccountRepository]):
-    def __init__(
-            self,
-            account_repository: AccountRepository,
-            user_category_repository: UserCategoryRepository,
-            operation_repository: OperationRepository
-    ):
-        super().__init__(account_repository)
-        self.cat_repo = user_category_repository
-        self.op_repo = operation_repository
+class AccountService:
+    def __init__(self, uow: IUnitOfWork):
+        self.uow = uow
+
+    @property
+    def acc_repo(self) -> AccountRepository:
+        return self.uow.get_repo(AccountRepository)
+    
+    @property
+    def cat_repo(self) -> UserCategoryRepository:
+        return self.uow.get_repo(UserCategoryRepository)
+    
+    @property
+    def op_repo(self) -> OperationRepository:
+        return self.uow.get_repo(OperationRepository)
 
     async def _get_correction_category(
             self,
@@ -44,65 +47,92 @@ class AccountService(ActiveNamedService[AccountRepository]):
             create_data: AccountCreate,
             user_id: uuid.UUID
     ) -> Account:
-        try:
-            data_dict = create_data.model_dump(exclude_unset=True)
+        data_dict = create_data.model_dump(exclude_unset=True)
 
-            account = await self.repo.create(
-                account_data=data_dict,
-                user_id=user_id
-            )
+        account = await self.acc_repo.create(
+            create_data=data_dict,
+            user_id=user_id
+        )
 
+        if not create_data.balance:
+            return account
+        
+        await self.uow.flush()
 
-            if create_data.balance:
-                await self.repo.session.flush()
-
-                category = await self._get_correction_category(
+        category = await self._get_correction_category(
                     create_data.balance,
                     user_id=user_id
                 )
+        
+        await self.op_repo.create(
+            {
+                "amount": create_data.balance,
+                "description": "Начальная корректировка счета",
+                "account_id": account.id,
+                "category_id": category.id
+            },
+            user_id=user_id
+        )
 
-                await self.op_repo.create(
-                    {
-                        "amount": create_data.balance,
-                        "description": "Начальная корректировка счета",
-                        "account_id": account.id,
-                        "category_id": category.id
-                    },
-                    user_id=user_id
-                )
-
-            await self.repo.session.commit()
-            await self.repo.session.refresh(account)
-
-            return account
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
+        return account
     
     async def check_deleted(
             self,
             create_data: AccountCreate,
             user_id: uuid.UUID
-    ) -> uuid.UUID:
-        existing = await self.repo.get_one_by(
+    ) -> list[Account]:
+        return await self.acc_repo.get_all_by(
             user_id=user_id,
             **create_data.model_dump(exclude=["balance", ]),
             is_active=False
-        )
-
-        if existing:
-            return existing.id
-        return None
+        ) or []
         
     async def restore(
             self,
             account_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> Account:
-        account = await self.repo.restore(
+        return await self.acc_repo.restore(
             account_id=account_id,
             user_id=user_id
         )
+    
+    async def get_all(
+            self,
+            user_id: uuid.UUID,
+            is_active: bool = False
+    ) -> list[Account]:
+        return list(await self.acc_repo.get_all(user_id, is_active))
+    
+    async def update(
+            self,
+            account_id: uuid.UUID,
+            update_data: AccountUpdate,
+            user_id: uuid.UUID
+    ) -> Account:
+        return await self.acc_repo.update(
+            model_id=account_id,
+            update_data=update_data.model_dump(exclude_unset=True),
+            user_id=user_id
+        )
+    
+    async def delete(
+            self,
+            account_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool:
+        existing_operations = await self.op_repo.get_all_by(
+            user_id=user_id,
+            account_id=account_id
+        )
 
-        await self.repo.session.commit()
-        return account
+        if existing_operations:
+            return await self.acc_repo.soft_delete(
+                account_id=account_id,
+                user_id=user_id
+            )
+        return await self.acc_repo.delete(
+            account_id=account_id,
+            user_id=user_id
+        )
+            

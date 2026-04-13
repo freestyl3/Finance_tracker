@@ -2,24 +2,13 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from src.accounts.repository import AccountRepository
-from src.categories.user_categories.repository import UserCategoryRepository
-from src.operations.repositories.repository import OperationRepository
-from src.database.repositories import (
-    get_account_repository, get_operation_repository,
-    get_user_category_repository
-)
 from src.accounts.service import AccountService
+from src.core.uow import IUnitOfWork
+from src.infrasturcture.dependencies import get_uow
 
-def get_account_service(
-        account_repository: AccountRepository = Depends(get_account_repository),
-        user_category_repository: UserCategoryRepository = Depends(get_user_category_repository),
-        operation_repository: OperationRepository = Depends(get_operation_repository)
+async def get_account_service(
+        uow: IUnitOfWork = Depends(get_uow)
 ) -> AccountService:
-    return AccountService(
-        account_repository=account_repository,
-        user_category_repository=user_category_repository,
-        operation_repository=operation_repository
-    )
+    return AccountService(uow)
 
 AccountServiceDep = Annotated[AccountService, Depends(get_account_service)]

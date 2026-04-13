@@ -2,15 +2,30 @@ import uuid
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import insert, update
+from sqlalchemy import update, delete
+from sqlalchemy.exc import IntegrityError
 
 from src.base.repository import ActiveNamedRepository
 from src.accounts.models import Account
 from src.common.enums import Currency
+from src.accounts.exceptions import AccountAlreadyExistsError, AccountNotFoundError
 
 class AccountRepository(ActiveNamedRepository[Account]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=Account, session=session)
+
+    async def create(
+            self,
+            create_data: dict,
+            user_id: uuid.UUID
+    ) -> Account:
+        account = await super().create(create_data, user_id)
+        
+        try:
+            await self.session.flush()
+            return account
+        except IntegrityError:
+            raise AccountAlreadyExistsError()
 
     async def restore(
             self,
@@ -69,4 +84,37 @@ class AccountRepository(ActiveNamedRepository[Account]):
             )
 
             await self.session.execute(query)
-    
+
+    async def delete(
+            self,
+            account_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool:
+        query = delete(Account).where(
+            Account.id == account_id,
+            Account.user_id == user_id,
+            Account.is_active.is_(True)
+        )
+
+        result = await self.session.execute(query)
+
+        if not result.rowcount > 0:
+            raise AccountNotFoundError()
+        return True
+        
+    async def soft_delete(
+            self,
+            account_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool:
+        query = update(Account).where(
+            Account.id == account_id,
+            Account.user_id == user_id,
+            Account.is_active.is_(True)
+        ).values(is_active=False)
+
+        result = await self.session.execute(query)
+
+        if not result.rowcount > 0:
+            raise AccountNotFoundError()
+        return True

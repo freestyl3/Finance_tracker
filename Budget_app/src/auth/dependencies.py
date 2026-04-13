@@ -33,7 +33,7 @@ async def get_auth_service(
 #         user_category_repository=user_category_repository
 #     )
 
-def get_user_id(
+async def get_user_id(
         token: str = Depends(oauth2_scheme)
 ) -> uuid.UUID:
     credentials_exception = HTTPException(

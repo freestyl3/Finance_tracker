@@ -19,8 +19,8 @@ class BaseRepository(Generic[ModelType]):
 
     async def create(self, create_data: dict, user_id: uuid.UUID) -> ModelType:
         obj = self.model(**create_data, user_id=user_id)
-
         self.session.add(obj)
+
         return obj
 
     async def get_one_by(
@@ -117,15 +117,14 @@ class ActiveNamedRepository(BaseRepository[ModelType]):
             self,
             model_id: uuid.UUID,
             user_id: uuid.UUID,
-            only_active: bool = True
+            is_active: bool = True,
+            only_active: bool = True # deprecated
     ) -> ModelType | None:
         query = select(self.model).where(
             self.model.id == model_id,
-            self.model.user_id == user_id
+            self.model.user_id == user_id,
+            self.model.is_active.is_(is_active)
         )
-
-        if only_active:
-            query = query.where(self.model.is_active.is_(True))
 
         result = await self.session.scalars(query)
         return result.unique().one_or_none()
@@ -134,15 +133,14 @@ class ActiveNamedRepository(BaseRepository[ModelType]):
             self,
             model_name: str,
             user_id: uuid.UUID,
-            only_active: bool = True
+            is_active: bool = True,
+            only_active: bool = True # deprecated
     ) -> ModelType | None:
         query = select(self.model).where(
             self.model.name == model_name,
-            self.model.user_id == user_id
+            self.model.user_id == user_id,
+            self.model.is_active.is_(is_active)
         )
-
-        if only_active:
-            query = query.where(self.model.is_active.is_(True))
 
         result = await self.session.scalars(query)
         return result.unique().one_or_none()
@@ -150,12 +148,13 @@ class ActiveNamedRepository(BaseRepository[ModelType]):
     async def get_all(
             self,
             user_id: uuid.UUID,
-            only_active: bool = True
+            is_active: bool = True,
+            only_active: bool = True # deprecated
     ) -> list[ModelType]:
-        query = select(self.model).where(self.model.user_id == user_id)
-
-        if only_active:
-            query = query.where(self.model.is_active.is_(True))
+        query = select(self.model).where(
+            self.model.user_id == user_id,
+            self.model.is_active.is_(is_active)
+        )
 
         result = await self.session.scalars(query)
         return result.unique().all()
@@ -177,5 +176,4 @@ class ActiveNamedRepository(BaseRepository[ModelType]):
         )
 
         result = await self.session.execute(query)
-        
         return result.scalars().one_or_none()
