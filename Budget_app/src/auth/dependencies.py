@@ -95,8 +95,9 @@ async def validate_refresh_token(
 
 async def get_current_user(
         user_id: uuid.UUID = Depends(get_user_id),
-        user_repo: UserRepository = Depends(get_user_repository)
-) -> User:    
+        uow: IUnitOfWork = Depends(get_uow)
+) -> User:
+    user_repo = uow.get_repo(UserRepository)
     user = await user_repo.get_by_id(user_id)
 
     if not user:

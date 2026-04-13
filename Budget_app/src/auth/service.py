@@ -12,6 +12,14 @@ class AuthService:
     def __init__(self, uow: IUnitOfWork):
         self.uow  = uow
 
+    @property
+    def user_repo(self) -> UserRepository:
+        return self.uow.get_repo(UserRepository)
+    
+    @property
+    def cat_repo(self) -> UserCategoryRepository:
+        return self.uow.get_repo(UserCategoryRepository)
+
     def _get_initial_categories_data(self, user_id: uuid.UUID) -> list[dict]:
         return[
             {
@@ -38,22 +46,19 @@ class AuthService:
         ]
 
     async def create_user(self, create_schema: UserCreate) -> UserRead:
-        user_repo = self.uow.get_repo(UserRepository)
-        cat_repo = self.uow.get_repo(UserCategoryRepository)
-
         create_data = create_schema.model_dump(exclude=["password"])
         create_data["hashed_password"] = get_password_hash(create_schema.password)
         create_data["is_admin"] = False
         create_data["is_staff"] = False
 
-        user = await user_repo.create(create_data)
+        user = await self.user_repo.create(create_data)
         initial_categories_data = self._get_initial_categories_data(user.id)
-        await cat_repo.batch_create(initial_categories_data)
+        await self.cat_repo.batch_create(initial_categories_data)
 
         return UserRead.model_validate(user)
 
     async def authenticate_user(self, username: str, password: str) -> User | None:
-        user = await self.repo.get_by_username(username)
+        user = await self.user_repo.get_by_username(username)
 
         if not user:
             return None
