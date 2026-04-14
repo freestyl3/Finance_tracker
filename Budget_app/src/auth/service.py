@@ -58,7 +58,7 @@ class AuthService:
         return UserRead.model_validate(user)
 
     async def authenticate_user(self, username: str, password: str) -> User | None:
-        user = await self.user_repo.get_by_username(username)
+        user = await self.user_repo.get_one_by(username=username)
 
         if not user:
             return None

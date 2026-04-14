@@ -6,8 +6,6 @@ from fastapi.security import OAuth2PasswordBearer
 
 from src.auth.repository import UserRepository
 from src.database.repositories import get_user_repository
-# from src.categories.user_categories.repository import UserCategoryRepository
-# from src.database.repositories import get_user_category_repository
 from src.auth.service import AuthService
 from src.auth.models import User
 from src.auth.security import decode_token
@@ -23,15 +21,6 @@ async def get_auth_service(
         uow: IUnitOfWork = Depends(get_uow)
 ) -> AuthService:
     return AuthService(uow)
-
-# async def get_auth_service(
-#         user_repository: UserRepository = Depends(get_user_repository),
-#         user_category_repository: UserCategoryRepository = Depends(get_user_category_repository)
-# ):
-#     return AuthService(
-#         user_repository=user_repository,
-#         user_category_repository=user_category_repository
-#     )
 
 async def get_user_id(
         token: str = Depends(oauth2_scheme)
@@ -86,7 +75,7 @@ async def validate_refresh_token(
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid token data")
     
-    user = await user_repo.get_by_id(user_id)
+    user = await user_repo.get_one_by(id=user_id)
 
     if not user:
         raise HTTPException(status_code=401, detail="Invalid token data")
@@ -98,7 +87,7 @@ async def get_current_user(
         uow: IUnitOfWork = Depends(get_uow)
 ) -> User:
     user_repo = uow.get_repo(UserRepository)
-    user = await user_repo.get_by_id(user_id)
+    user = await user_repo.get_one_by(id=user_id)
 
     if not user:
         raise HTTPException(
