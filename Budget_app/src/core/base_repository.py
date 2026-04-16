@@ -48,7 +48,7 @@ class BaseRepository(Generic[ModelType]):
         except IntegrityError:
             raise self._map_integrity_error(repo_action)
         
-    async def create(self, create_data) -> ModelType:
+    async def create(self, create_data: dict) -> ModelType:
         obj = self.model(**create_data)
         self.session.add(obj)
         await self._flush_orm(RepoAction.CREATE)
