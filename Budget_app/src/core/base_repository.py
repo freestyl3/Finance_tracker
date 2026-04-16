@@ -3,7 +3,8 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, Sequence
+from sqlalchemy import case
 
 from src.database.base import Base
 from src.core.enums import RepoAction
@@ -17,6 +18,9 @@ class BaseRepository(Generic[ModelType]):
 
     def _map_integrity_error(self, repo_action: RepoAction) -> Exception:
         return RuntimeError(f"Integrity error during {repo_action}")
+    
+    def _not_found(self) -> Exception:
+        return RuntimeError(f"{self.model.__name__} not found")
     
     def _prepare_select_query(self, *load_options, **fields):
         query = select(self.model)
@@ -50,22 +54,41 @@ class BaseRepository(Generic[ModelType]):
         await self._flush_orm(RepoAction.CREATE)
         return obj
 
-    async def get_one_by(self, *load_options, **fields) -> ModelType | None:
+    async def get_one_by(
+            self,
+            unique: bool = False,
+            *load_options,
+            **fields
+    ) -> ModelType | None:
         query = self._prepare_select_query(*load_options, **fields)
 
         result = await self.session.scalars(query)
-        return result.unique().one_or_none()
+
+        if unique:
+            result = result.unique()
+        
+        return result.one_or_none()
     
-    async def get_all_by(self, *load_options, **fields) -> list[ModelType]:
+    async def get_all_by(
+            self,
+            unique: bool = False,
+            *load_options,
+            **fields
+    ) -> Sequence[ModelType]:
         query = self._prepare_select_query(*load_options, **fields)
 
         result = await self.session.scalars(query)
-        return result.unique().all()
+
+        if unique:
+            result = result.unique()
+
+        return result.all()
     
     async def update(
             self,
             model_id: uuid.UUID,
             update_data: dict,
+            raise_if_not_found: bool = False,
             **filters
     ) -> ModelType | None:
         query = (
@@ -82,10 +105,68 @@ class BaseRepository(Generic[ModelType]):
             query = query.where(getattr(self.model, key) == value)
         
         result = await self._execute(query, RepoAction.UPDATE)
-        return result.scalars().unique().one_or_none()
+        updated = result.scalars().one_or_none()
 
-    async def delete(self, model_id: uuid.UUID, **fields) -> bool:
-        query = delete(self.model).where(self.model.id == model_id)
+        if raise_if_not_found and updated is None:
+            raise self._not_found()
+
+        return updated
+    
+    async def batch_update(
+            self,
+            values_by_id: dict[uuid.UUID, dict],
+            **filters
+    ) -> Sequence[ModelType]:
+        if not values_by_id:
+            return []
+
+        fields = set()
+        for values in values_by_id.values():
+            fields.update(values.keys())
+
+        update_values = {}
+
+        for field in fields:
+            if not hasattr(self.model, field):
+                raise ValueError(f"Model {self.model.__name__} doesn't have field '{field}'")
+                
+            column = getattr(self.model, field)
+
+            case_dict = {
+                obj_id: field_values[field]
+                for obj_id, field_values in values_by_id.items()
+                if field in field_values
+            }
+
+            update_values[field] = case(case_dict, value=self.model.id, else_=column)
+
+        query = (
+            update(self.model)
+            .where(self.model.id.in_(values_by_id.keys()))
+            .values(**update_values)
+            .returning(self.model)
+        )
+
+        for key, value in filters.items():
+            if not hasattr(self.model, key):
+                raise ValueError(f"Model {self.model.__name__} doesn't have field '{key}'")
+
+            query = query.where(getattr(self.model, key) == value)
+
+        result = await self._execute(query, RepoAction.UPDATE)
+        return result.scalars().all()
+
+    async def delete(
+            self,
+            model_id: uuid.UUID,
+            raise_if_not_found: bool = False,
+            **fields
+    ) -> bool:
+        query = (
+            delete(self.model)
+            .where(self.model.id == model_id)
+            .returning(self.model.id)
+        )
 
         for key, value in fields.items():
             if not hasattr(self.model, key):
@@ -94,4 +175,9 @@ class BaseRepository(Generic[ModelType]):
             query = query.where(getattr(self.model, key) == value)
 
         result = await self._execute(query, RepoAction.DELETE)
-        return result.rowcount > 0
+        deleted_id = result.scalar_one_or_none()
+
+        if raise_if_not_found and deleted_id is None:
+            raise self._not_found()
+
+        return deleted_id is not None

@@ -8,6 +8,7 @@ from src.categories.user_categories.repository import UserCategoryRepository
 from src.operations.repositories.repository import OperationRepository
 from src.common.enums import OperationType
 from src.core.uow import IUnitOfWork
+from src.accounts.exceptions import AccountNotFoundError
 
 class AccountService:
     def __init__(self, uow: IUnitOfWork):
@@ -60,9 +61,9 @@ class AccountService:
         await self.uow.flush()
 
         category = await self._get_correction_category(
-                    create_data.balance,
-                    user_id=user_id
-                )
+            create_data.balance,
+            user_id=user_id
+        )
         
         await self.op_repo.create(
             {
@@ -92,17 +93,25 @@ class AccountService:
             account_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> Account:
-        return await self.acc_repo.restore(
-            account_id=account_id,
+        return await self.acc_repo.update(
+            model_id=account_id,
+            update_data={
+                'is_active': True
+            },
             user_id=user_id
         )
     
     async def get_all(
             self,
             user_id: uuid.UUID,
-            is_active: bool = False
+            is_active: bool = True
     ) -> list[Account]:
-        return list(await self.acc_repo.get_all(user_id, is_active))
+        return list(
+            await self.acc_repo.get_all_by(
+                user_id=user_id,
+                is_active=is_active
+            )
+        )
     
     async def update(
             self,
@@ -110,9 +119,35 @@ class AccountService:
             update_data: AccountUpdate,
             user_id: uuid.UUID
     ) -> Account:
+        update_dict = update_data.model_dump(exclude_unset=True)
+
+        if not update_dict:
+            account = self.acc_repo.get_one_by(
+                account_id=account_id,
+                user_id=user_id
+            )
+
+            if not account:
+                raise AccountNotFoundError()
+            
+            return account
+
         return await self.acc_repo.update(
             model_id=account_id,
             update_data=update_data.model_dump(exclude_unset=True),
+            user_id=user_id
+        )
+    
+    async def soft_delete(
+            self,
+            account_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> Account:
+        return await self.acc_repo.update(
+            model_id=account_id,
+            update_data={
+                "is_active": False
+            },
             user_id=user_id
         )
     
@@ -121,18 +156,22 @@ class AccountService:
             account_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> bool:
+        
+        # Отрефакторить после того как OperationRepository будет переведен
+        # на новый BaseRepository и перевести на exist_by
         existing_operations = await self.op_repo.get_all_by(
             user_id=user_id,
             account_id=account_id
         )
 
         if existing_operations:
-            return await self.acc_repo.soft_delete(
+            await self.soft_delete(
                 account_id=account_id,
                 user_id=user_id
             )
+            return True
         return await self.acc_repo.delete(
-            account_id=account_id,
+            model_id=account_id,
             user_id=user_id
         )
             

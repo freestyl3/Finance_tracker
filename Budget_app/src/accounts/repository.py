@@ -2,49 +2,27 @@ import uuid
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import update, delete
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import update
 
-from src.base.repository import ActiveNamedRepository
+from src.core.base_repository import BaseRepository
+from src.core.enums import RepoAction
 from src.accounts.models import Account
 from src.common.enums import Currency
 from src.accounts.exceptions import AccountAlreadyExistsError, AccountNotFoundError
 
-class AccountRepository(ActiveNamedRepository[Account]):
+class AccountRepository(BaseRepository[Account]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=Account, session=session)
 
-    async def create(
-            self,
-            create_data: dict,
-            user_id: uuid.UUID
-    ) -> Account:
-        account = await super().create(create_data, user_id)
-        
-        try:
-            await self.session.flush()
-            return account
-        except IntegrityError:
-            raise AccountAlreadyExistsError()
-
-    async def restore(
-            self,
-            account_id: uuid.UUID,
-            user_id: uuid.UUID
-    ) -> Account:
-        query = (
-            update(Account)
-            .where(
-                Account.id == account_id,
-                Account.user_id == user_id
-            )
-            .values(is_active=True)
-            .returning(Account)
-        )
-
-        result = await self.session.scalars(query)
-        return result.unique().one_or_none()
+    def _map_integrity_error(self, repo_action: RepoAction) -> Exception:
+        if repo_action == RepoAction.CREATE:
+            return AccountAlreadyExistsError()
+        return super()._map_integrity_error(repo_action)
     
+    def _not_found(self) -> Exception:
+        return AccountNotFoundError()
+    
+    # Удалить эти 2 метода после того как доберусь до OperationService
     async def update_balance(
             self,
             account_id: uuid.UUID,
@@ -84,37 +62,3 @@ class AccountRepository(ActiveNamedRepository[Account]):
             )
 
             await self.session.execute(query)
-
-    async def delete(
-            self,
-            account_id: uuid.UUID,
-            user_id: uuid.UUID
-    ) -> bool:
-        query = delete(Account).where(
-            Account.id == account_id,
-            Account.user_id == user_id,
-            Account.is_active.is_(True)
-        )
-
-        result = await self.session.execute(query)
-
-        if not result.rowcount > 0:
-            raise AccountNotFoundError()
-        return True
-        
-    async def soft_delete(
-            self,
-            account_id: uuid.UUID,
-            user_id: uuid.UUID
-    ) -> bool:
-        query = update(Account).where(
-            Account.id == account_id,
-            Account.user_id == user_id,
-            Account.is_active.is_(True)
-        ).values(is_active=False)
-
-        result = await self.session.execute(query)
-
-        if not result.rowcount > 0:
-            raise AccountNotFoundError()
-        return True
