@@ -84,6 +84,17 @@ class BaseRepository(Generic[ModelType]):
 
         return result.all()
     
+    async def exists_by(
+            self,
+            **filters
+    ) -> bool:
+        base_query = self._prepare_select_query(**filters)
+    
+        query = select(base_query.exists())
+        
+        result = await self.session.execute(query)
+        return bool(result.scalar())
+    
     async def update(
             self,
             model_id: uuid.UUID,
@@ -161,11 +172,11 @@ class BaseRepository(Generic[ModelType]):
             model_id: uuid.UUID,
             raise_if_not_found: bool = False,
             **fields
-    ) -> bool:
+    ) -> ModelType | None:
         query = (
             delete(self.model)
             .where(self.model.id == model_id)
-            .returning(self.model.id)
+            .returning(self.model)
         )
 
         for key, value in fields.items():
@@ -175,9 +186,9 @@ class BaseRepository(Generic[ModelType]):
             query = query.where(getattr(self.model, key) == value)
 
         result = await self._execute(query, RepoAction.DELETE)
-        deleted_id = result.scalar_one_or_none()
+        deleted = result.scalar_one_or_none()
 
-        if raise_if_not_found and deleted_id is None:
+        if raise_if_not_found and deleted is None:
             raise self._not_found()
 
-        return deleted_id is not None
+        return deleted

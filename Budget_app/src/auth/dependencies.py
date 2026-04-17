@@ -10,7 +10,7 @@ from src.auth.service import AuthService
 from src.auth.models import User
 from src.auth.security import decode_token
 from src.core.uow import IUnitOfWork
-from src.infrasturcture.dependencies import get_uow
+from src.database.dependencies import get_uow
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login",

@@ -1,10 +1,10 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
-from src.operations.repositories.repository import OperationRepository
+from src.core.uow import IUnitOfWork
+from src.operations.repository import OperationRepository
 from src.operations.schemas import OperationCreate, OperationUpdate
 from src.operations.models import Operation
 from src.pagination import PaginationParams
@@ -14,17 +14,27 @@ from src.categories.user_categories.repository import UserCategoryRepository
 from src.common.enums import OperationType, Currency
 from src.accounts.models import Account
 from src.categories.user_categories.models import UserCategory
+from src.operations.exceptions import (
+    OperationNotFoundError, OperationInChainError, OperationIsTransferError
+)
+from src.accounts.exceptions import AccountNotFoundError
+from src.categories.user_categories.exceptions import UserCategoryNotFoundError
 
 class OperationService:
-    def __init__(
-            self,
-            repo: OperationRepository,
-            user_category_repository: UserCategoryRepository,
-            account_repository: AccountRepository
-    ):
-        self.repo = repo
-        self.cat_repo = user_category_repository
-        self.account_repo = account_repository
+    def __init__(self, uow: IUnitOfWork):
+        self.uow = uow
+
+    @property
+    def op_repo(self) -> OperationRepository:
+        return self.uow.get_repo(OperationRepository)
+    
+    @property
+    def cat_repo(self) -> UserCategoryRepository:
+        return self.uow.get_repo(UserCategoryRepository)
+    
+    @property
+    def acc_repo(self) -> AccountRepository:
+        return self.uow.get_repo(AccountRepository)
     
     def _validate_amount(
             self,
@@ -40,13 +50,14 @@ class OperationService:
             category_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> UserCategory:
-        category = await self.cat_repo.get_by_id(
-            model_id=category_id,
-            user_id=user_id
+        category = await self.cat_repo.get_one_by(
+            user_id=user_id,
+            id=category_id            
         )
 
         if not category:
-            raise ValueError("Can't validate category")
+            raise UserCategoryNotFoundError()
+        
         return category
         
     async def _update_account_balance(
@@ -56,7 +67,7 @@ class OperationService:
             user_id: uuid.UUID,
             currency: Currency | None = None,
     ) -> Account:
-        account = await self.account_repo.update_balance(
+        account = await self.acc_repo.update_balance(
             account_id=account_id,
             delta=delta,
             user_id=user_id,
@@ -64,7 +75,8 @@ class OperationService:
         )
 
         if not account:
-            raise ValueError("Account not found")
+            raise AccountNotFoundError()
+        
         return account
 
     async def create(
@@ -79,29 +91,23 @@ class OperationService:
             user_id=user_id
         )
 
-        # create_data.amount = self._validate_amount(category.type, create_data.amount)
         data_dict["amount"] = self._validate_amount(category.type, create_data.amount)
         
-        try:
-            operation = await self.repo.create(
-                create_data=data_dict,
-                user_id=user_id
-            )
+        operation = await self.op_repo.create(
+            create_data=data_dict,
+            user_id=user_id
+        )
 
-            await self._update_account_balance(
-                account_id=operation.account_id,
-                delta=operation.amount,
-                user_id=user_id
-            )
+        account = await self._update_account_balance(
+            account_id=operation.account_id,
+            delta=operation.amount,
+            user_id=user_id
+        )
 
-            await self.repo.session.commit()
-            await self.repo.session.refresh(operation, ["account", "category"])
+        operation.account = account
+        operation.category = category
 
-            return operation
-
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
+        return operation
 
     async def get_all(
             self,
@@ -109,7 +115,7 @@ class OperationService:
             pagination: PaginationParams,
             filters: OperationFilter | None = None
     ) -> list[Operation]:
-        return await self.repo.get_all(user_id, filters, pagination)
+        return await self.op_repo.get_all(user_id, filters, pagination)
     
     async def update(
             self,
@@ -137,147 +143,118 @@ class OperationService:
     ) -> Operation:
         data_dict = update_data.model_dump(exclude_unset=True)
 
-        try:
-            await self.repo.update(
-                model_id=operation_id,
-                update_data=data_dict,
-                user_id=user_id,
-            )
+        operation = await self.op_repo.update(
+            model_id=operation_id,
+            update_data=data_dict,
+            user_id=user_id,
+        )
 
-            await self.repo.session.commit()
-            return await self.repo.get_by_id(
-                operation_id,
-                user_id,
-                joinedload(Operation.account),
-                joinedload(Operation.category)
-            )
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
+        if operation.chain_id:
+            raise OperationInChainError()
+        
+        if operation.related_operation_id:
+            raise OperationIsTransferError()
+
+        return await self.op_repo.get_one_by(
+            user_id,
+            joinedload(Operation.account),
+            joinedload(Operation.category),
+            id=operation_id
+        )
     
     async def update_with_related_data(
             self,
             operation_id: uuid.UUID,
             update_data: OperationUpdate,
             user_id: uuid.UUID
-    ):
-        operation = await self.repo.get_by_id(
-            operation_id,
+    ) -> Operation:
+        operation = await self.op_repo.get_one_by(
             user_id,
+            joinedload(Operation.account),
             joinedload(Operation.category),
-            joinedload(Operation.account)
+            id=operation_id
         )
 
         if not operation:
-            raise ValueError("Operation not found or you don't have permission")
+            raise OperationNotFoundError()
         
         if operation.chain_id:
-            raise ValueError("Can't delete operation inside chain. Remove operation from chain first")
+            raise OperationInChainError()
         
         if operation.related_operation_id:
-            raise ValueError("Can't update transfer on this endpoint. Use PUT /transfers/{operation_id}")
+            raise OperationIsTransferError()
         
-        try:
-            amount = update_data.amount or operation.amount
-            category = operation.category
+        amount = update_data.amount or operation.amount
+        account = operation.account
+        category = operation.category
 
-            if update_data.category_id and operation.category_id != update_data.category_id:
-                category = await self._validate_category(update_data.category_id, user_id)
+        if update_data.category_id and operation.category_id != update_data.category_id:
+            category = await self._validate_category(update_data.category_id, user_id)
 
-            new_amount = self._validate_amount(
-                category_type=category.type,
-                amount=abs(amount)            
-            )
+        new_amount = self._validate_amount(
+            category_type=category.type,
+            amount=abs(amount)            
+        )
 
-            account_id = update_data.account_id or operation.account_id
+        account_id = update_data.account_id or operation.account_id
 
-            if new_amount != operation.amount or account_id != operation.account_id:
-                if account_id == operation.account_id:
-                    delta = -operation.amount + new_amount
+        if new_amount != operation.amount or account_id != operation.account_id:
+            if account_id == operation.account_id:
+                delta = -operation.amount + new_amount
 
-                    account = await self._update_account_balance(
-                        account_id=account_id,
-                        delta=delta,
-                        user_id=user_id
-                    )
-                else:
-                    await self._update_account_balance(
-                        account_id=operation.account_id,
-                        delta=-operation.amount,
-                        user_id=user_id
-                    )
+                account = await self._update_account_balance(
+                    account_id=account_id,
+                    delta=delta,
+                    user_id=user_id
+                )
+            else:
+                await self._update_account_balance(
+                    account_id=operation.account_id,
+                    delta=-operation.amount,
+                    user_id=user_id
+                )
 
-                    account = await self._update_account_balance(
-                        account_id=account_id,
-                        delta=new_amount,
-                        user_id=user_id,
-                        currency=operation.account.currency
-                    )
-            
-            data_dict = update_data.model_dump(exclude_unset=True)
-            # update_data.amount = new_amount
-            data_dict["amount"] = new_amount
-
-            updated_operation = await self.repo.update(
-                model_id=operation_id,
-                update_data=data_dict,
-                user_id=user_id
-            )
-
-            if not updated_operation:
-                raise ValueError("Operation not found or you don't have permission")
+                account = await self._update_account_balance(
+                    account_id=account_id,
+                    delta=new_amount,
+                    user_id=user_id,
+                    currency=operation.account.currency
+                )
         
-            await self.repo.session.commit()
-            await self.repo.session.refresh(operation, ["account", "category"])
-        
-            return updated_operation
-            
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
-        except ValueError as e:
-            await self.repo.session.rollback()
-            raise e        
+        data_dict = update_data.model_dump(exclude_unset=True)
+        data_dict["amount"] = new_amount
+
+        updated_operation = await self.op_repo.update(
+            model_id=operation_id,
+            update_data=data_dict,
+            user_id=user_id
+        )
+    
+        updated_operation.account = account
+        updated_operation.category = category
+    
+        return updated_operation       
 
     async def delete(self, operation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
-        try:
-            deleted_operations: list[Operation] = list(
-                await self.repo.delete(operation_id, user_id)
-            )
-            
-            if not deleted_operations:
-                raise ValueError("Operation not found or you don't have permission")
-            
-            if deleted_operations[0].chain_id:
-                raise ValueError("Can't delete operation inside chain. Remove operation from chain first")
-            
-            data_dict = {}
+        deleted_op = await self.op_repo.delete(
+            model_id=operation_id,
+            user_id=user_id
+        )
 
-            for operation in deleted_operations:
-                data_dict[operation.account_id] = operation.amount
-
-            await self.account_repo.batch_update_balance(
-                data_dict=data_dict,
-                user_id=user_id
-            )
-
-            await self.repo.session.commit()
+        if not deleted_op:
             return True
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
-        except ValueError as e:
-            await self.repo.session.rollback()
-            raise e
-    
-    async def change_visibility(
-            self,
-            operation_id: uuid.UUID,
-            user_id: uuid.UUID
-    ) -> Operation:        
-        operation = await self.repo.change_visibility(operation_id, user_id)
+        
+        if deleted_op.chain_id:
+            raise OperationInChainError()
+        
+        if deleted_op.related_operation_id:
+            raise OperationIsTransferError()
 
-        if not operation:
-            raise ValueError("Operation not found")
-        return operation
+        await self._update_account_balance(
+            account_id=deleted_op.account_id,
+            delta=-deleted_op.amount,
+            user_id=user_id
+        )
+
+        return True
             

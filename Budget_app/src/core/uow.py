@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Type, TypeVar
-from src.core.repository import RepositoryProtocol
+from src.core.repository.protocol import RepositoryProtocol
 
 T = TypeVar("T", bound=RepositoryProtocol)
 

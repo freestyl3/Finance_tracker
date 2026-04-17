@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 
 from src.chains.repository import ChainRepository
-from src.operations.repositories.operation_chain_repository import OperationChainRepository
+from src.operations.repository import OperationRepository
 from src.chains.schemas import (
     ChainMetadata, ChainCreate, ChainOperationsUpdate, ChainUpdate
 )
@@ -19,7 +19,7 @@ class ChainService:
     def __init__(
             self,
             chain_repository: ChainRepository,
-            operation_repository: OperationChainRepository,
+            operation_repository: OperationRepository,
             category_repository: UserCategoryRepository
     ):
         self.repo = chain_repository

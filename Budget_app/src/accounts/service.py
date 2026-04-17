@@ -5,7 +5,7 @@ from src.accounts.repository import AccountRepository
 from src.accounts.schemas import AccountCreate, AccountUpdate
 from src.accounts.models import Account
 from src.categories.user_categories.repository import UserCategoryRepository
-from src.operations.repositories.repository import OperationRepository
+from src.operations.repository import OperationRepository
 from src.common.enums import OperationType
 from src.core.uow import IUnitOfWork
 from src.accounts.exceptions import AccountNotFoundError
@@ -156,22 +156,19 @@ class AccountService:
             account_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> bool:
-        
-        # Отрефакторить после того как OperationRepository будет переведен
-        # на новый BaseRepository и перевести на exist_by
-        existing_operations = await self.op_repo.get_all_by(
-            user_id=user_id,
+        operations_exists = await self.op_repo.exists_by(
             account_id=account_id
         )
 
-        if existing_operations:
+        if operations_exists:
             await self.soft_delete(
                 account_id=account_id,
                 user_id=user_id
             )
-            return True
-        return await self.acc_repo.delete(
+        await self.acc_repo.delete(
             model_id=account_id,
             user_id=user_id
         )
+
+        return True
             

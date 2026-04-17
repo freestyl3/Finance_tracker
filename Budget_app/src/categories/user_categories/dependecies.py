@@ -2,14 +2,14 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from src.categories.user_categories.repository import UserCategoryRepository
-from src.database.repositories import get_user_category_repository
+from src.core.uow import IUnitOfWork
+from src.database.dependencies import get_uow
 from src.categories.user_categories.service import UserCategoryService
 
 def get_user_category_service(
-        repo: UserCategoryRepository = Depends(get_user_category_repository)
+        uow: IUnitOfWork = Depends(get_uow)
 ) -> UserCategoryService:
-    return UserCategoryService(repo)
+    return UserCategoryService(uow)
 
 UserCategoryServiceDep = Annotated[
     UserCategoryService,

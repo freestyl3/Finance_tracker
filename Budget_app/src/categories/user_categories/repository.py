@@ -1,25 +1,47 @@
 import uuid
+from typing import override
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, exists, Sequence
+from sqlalchemy import select, Sequence
 from sqlalchemy.dialects.postgresql import insert
 
-from src.base.repository import ActiveNamedRepository
+from src.core.repository.scoped import UserScopedRepository
+from src.core.enums import RepoAction
+from src.categories.user_categories.exceptions import (
+    UserCategoryAlreadyExistsError, UserCategoryNotFoundError
+)
 from src.categories.user_categories.models import UserCategory
 from src.categories.system_categories.models import SystemCategory
-from src.common.enums import OperationType
-from src.operations.models import Operation
 
-class UserCategoryRepository(ActiveNamedRepository[UserCategory]):
+class UserCategoryRepository(UserScopedRepository[UserCategory]):
     def __init__(self, session: AsyncSession):
-        super().__init__(model=UserCategory, session=session)
+        super().__init__(UserCategory, session)
 
-    async def create(self, create_data: dict) -> UserCategory:
+    @override
+    def _map_integrity_error(self, repo_action: RepoAction) -> Exception:
+        if repo_action == RepoAction.CREATE:
+            return UserCategoryAlreadyExistsError()
+        elif repo_action == RepoAction.UPDATE:
+            return UserCategoryAlreadyExistsError()
+        return super()._map_integrity_error(repo_action)
+    
+    @override
+    def _not_found(self) -> Exception:
+        return UserCategoryNotFoundError()
+
+    @override
+    async def create(
+        self,
+        create_data: dict,
+        user_id: uuid.UUID
+    ) -> UserCategory | None:
         update_dict = {"is_active": True}
 
-        stmt = (
+        data_to_insert = {**create_data, "user_id": user_id}
+
+        query = (
             insert(UserCategory)
-            .values(**create_data)
+            .values(**data_to_insert)
             .on_conflict_do_update(
                 constraint="uq_user_categories_name_user_type",
                 set_=update_dict,
@@ -28,15 +50,24 @@ class UserCategoryRepository(ActiveNamedRepository[UserCategory]):
             .returning(UserCategory)
         )        
 
-        result = await self.session.scalars(stmt)
-        await self.session.flush()
-
-        return result.one_or_none()
+        result = await self.session.execute(query)
+        return result.scalars().one_or_none()
     
-    async def batch_create(self, create_data: list[dict]) -> Sequence[UserCategory]:
+    async def batch_create(
+            self,
+            create_data: list[dict],
+            user_id: uuid.UUID
+    ) -> Sequence[UserCategory]:
+        values_to_insert = [
+            {
+                **data,
+                "user_id": user_id
+            } for data in create_data
+        ]
+
         stmt = (
             insert(UserCategory)
-            .values(create_data)
+            .values(values_to_insert)
             .on_conflict_do_update(
                 constraint="uq_user_categories_name_user_type",
                 set_={"is_active": True},
@@ -46,29 +77,9 @@ class UserCategoryRepository(ActiveNamedRepository[UserCategory]):
         )
 
         result = await self.session.scalars(stmt)
-        await self.session.flush()
-
         return result.all()
     
-    async def get_by_name_and_type(
-            self,
-            category_name: str,
-            category_type: OperationType,
-            user_id: uuid.UUID,
-            only_active: bool = True
-    ) -> UserCategory | None:
-        query = select(UserCategory).where(
-            UserCategory.user_id == user_id,
-            UserCategory.name == category_name,
-            UserCategory.type == category_type
-        )
-
-        if only_active:
-            query = query.where(UserCategory.is_active.is_(True))
-
-        result = await self.session.execute(query)
-        return result.scalars().unique().one_or_none()
-    
+    # Возможно стоит перенести в SystemCategoryRepository
     async def get_available_for_user(
             self,
             user_id: uuid.UUID
@@ -84,48 +95,3 @@ class UserCategoryRepository(ActiveNamedRepository[UserCategory]):
 
         result = await self.session.scalars(query)
         return result.all()
-
-    async def delete(
-            self,
-            category_id: uuid.UUID,
-            user_id: uuid.UUID
-    ) -> bool:
-        query = select(exists().where(Operation.category_id == category_id))
-        result = await self.session.scalar(query)
-
-        if result:
-            return await self.soft_delete(category_id, user_id)
-        return await super().delete(category_id, user_id)
-        
-    # async def get_all_by_type(
-    #         self,
-    #         category_type: OperationType,
-    #         user_id: uuid.UUID,
-    #         only_active: bool = True
-    # ) -> list[UserCategory]:
-    #     query = select(UserCategory).where(
-    #         UserCategory.user_id == user_id,
-    #         UserCategory.type == category_type
-    #     )
-
-    #     if only_active:
-    #         query = self._get_active(query)
-
-    #     result = await self.session.execute(query)
-    #     return list(result.scalars().all())
-    
-    # async def get_soft_deleted(
-    #         self,
-    #         category_name: str,
-    #         category_type: OperationType,
-    #         user_id: uuid.UUID
-    # ) -> UserCategory | None:
-    #     query = select(UserCategory).where(
-    #         UserCategory.user_id == user_id,
-    #         UserCategory.name == category_name,
-    #         UserCategory.type == category_type,
-    #         UserCategory.is_active.is_(False)
-    #     )
-
-    #     result = await self.session.scalars(query)
-    #     return result.one_or_none()

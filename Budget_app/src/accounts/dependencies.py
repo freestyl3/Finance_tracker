@@ -4,7 +4,7 @@ from fastapi import Depends
 
 from src.accounts.service import AccountService
 from src.core.uow import IUnitOfWork
-from src.infrasturcture.dependencies import get_uow
+from src.database.dependencies import get_uow
 
 async def get_account_service(
         uow: IUnitOfWork = Depends(get_uow)

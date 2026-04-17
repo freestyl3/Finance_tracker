@@ -1,12 +1,8 @@
 from src.database.db_helper import db_helper
-from src.infrasturcture.uow import UnitOfWork
-from src.infrasturcture.repositories import repo_registry
+from src.database.uow import UnitOfWork
 
 async def get_uow():
-    uow = UnitOfWork(
-        session_factory=db_helper.session_factory,
-        repo_registry=repo_registry
-    )
+    uow = UnitOfWork(session_factory=db_helper.session_factory)
 
     await uow.start()
     try:

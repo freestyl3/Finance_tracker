@@ -5,13 +5,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from src.core.uow import T, IUnitOfWork
 
 class UnitOfWork(IUnitOfWork):
-    def __init__(
-            self,
-            session_factory: async_sessionmaker[AsyncSession],
-            repo_registry: Dict[Type[T], Callable[[AsyncSession], T]]
-    ):
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self._session_factory = session_factory
-        self._repo_registry = repo_registry
 
         self._session: AsyncSession | None = None
         self._repos: Dict[Type, object] = {}
@@ -48,13 +43,9 @@ class UnitOfWork(IUnitOfWork):
 
     def get_repo(self, repo_type: Type[T]) -> T:
         self._ensure_session()
-
-        if repo_type not in self._repo_registry:
-            raise ValueError(f"{repo_type} not registered")
         
         if repo_type not in self._repos:
-            factory = self._repo_registry[repo_type]
-            self._repos[repo_type] = factory(self._session)
+            self._repos[repo_type] = repo_type(session=self._session)
 
         return self._repos[repo_type]
 

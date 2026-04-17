@@ -2,11 +2,11 @@ import uuid
 import uuid6
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from src.operations.models import Operation
-from src.operations.schemas import TransferCreate, TransferUpdate
+from src.transfers.schemas import TransferCreate, TransferUpdate
 
 class TransferRepository:
     def __init__(self, session: AsyncSession):

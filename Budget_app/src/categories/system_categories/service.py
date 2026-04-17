@@ -49,7 +49,9 @@ class SystemCategoryService:
         )
     
     async def delete(self, category_id: uuid.UUID) -> bool:
-        return await self.sys_cat_repo.delete(
+        await self.sys_cat_repo.delete(
             model_id=category_id,
             raise_if_not_found=True
         )
+
+        return True

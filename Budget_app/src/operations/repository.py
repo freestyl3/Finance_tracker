@@ -1,15 +1,61 @@
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, or_, update
+from sqlalchemy import select, update, delete, or_, Select, Sequence
 from sqlalchemy.orm import joinedload
 
+from src.core.repository.scoped import UserScopedRepository
 from src.operations.models import Operation
+from src.operations.filters import OperationFilter
+from src.pagination import PaginationParams
+from src.categories.user_categories.models import UserCategory
 
-class OperationChainRepository:
+class OperationRepository(UserScopedRepository[Operation]):
     def __init__(self, session: AsyncSession):
-        self.session = session
+        super().__init__(Operation, session)
 
+    def _apply_report_filters(
+            self,
+            query: Select,
+            filters: OperationFilter
+    ) -> Select:
+        if filters.categories:
+            query = query.where(Operation.category_id.in_(filters.categories))
+        if filters.accounts:
+            query = query.where(Operation.account_id.in_(filters.accounts))
+        if filters.type:
+            query = (
+                query.join(UserCategory, Operation.category_id == UserCategory.id)
+                .where(UserCategory.type == filters.type)
+            )
+        if filters.date_from:
+            query = query.where(Operation.date >= filters.date_from)
+        if filters.date_to:
+            query = query.where(Operation.date <= filters.date_to)
+
+        return query
+
+    async def get_all(
+            self,
+            user_id: uuid.UUID,
+            filter_params: OperationFilter,
+            pagination: PaginationParams
+    ) -> Sequence[Operation]:
+        query = (
+            select(Operation)
+            .options(
+                joinedload(Operation.category), joinedload(Operation.account)
+            )
+            .where(Operation.user_id == user_id)
+        )
+        query = self._apply_report_filters(query, filter_params)
+        query = query.order_by(Operation.date.desc())
+        query = query.limit(pagination.limit).offset(pagination.offset)
+
+        result = await self.session.execute(query)
+        return result.scalars().unique().all()
+    
+    # Методы бывшего OperationChainRepository
     def _base_query(
             self,
             user_id: uuid.UUID

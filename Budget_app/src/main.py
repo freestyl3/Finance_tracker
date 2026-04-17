@@ -7,6 +7,7 @@ from src.accounts.router import router as accounts_router
 from src.categories.system_categories.router import router as system_categories_router
 from src.categories.user_categories.router import router as user_categories_router
 from src.operations.router import router as operations_router
+from src.transfers.router import router as transfers_router
 from src.chains.router import router as chain_router
 from src.feed.router import router as feed_router
 from src.core.config import settings
@@ -42,6 +43,11 @@ app.include_router(
     operations_router,
     prefix="/operations",
     tags=["operations"]
+)
+app.include_router(
+    transfers_router,
+    prefix="/transfers",
+    tags=["transfers"]
 )
 app.include_router(chain_router, prefix="/chains", tags=["chains"])
 app.include_router(feed_router, prefix="/feed", tags=["feed"])

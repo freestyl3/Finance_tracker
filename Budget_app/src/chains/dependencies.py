@@ -3,17 +3,17 @@ from typing import Annotated
 from fastapi import Depends
 
 from src.chains.repository import ChainRepository
-from src.operations.repositories.operation_chain_repository import OperationChainRepository
+from src.operations.repository import OperationRepository
 from src.categories.user_categories.repository import UserCategoryRepository
 from src.database.repositories import (
-    get_chain_repository, get_operation_chain_repository,
+    get_chain_repository, get_operation_repository,
     get_user_category_repository
 )
 from src.chains.service import ChainService
 
 async def get_chain_service(
         chain_repository: ChainRepository = Depends(get_chain_repository),
-        operation_repository: OperationChainRepository = Depends(get_operation_chain_repository),
+        operation_repository: OperationRepository = Depends(get_operation_repository),
         category_repository: UserCategoryRepository = Depends(get_user_category_repository)
 ) -> ChainService:
     return ChainService(

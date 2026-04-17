@@ -4,14 +4,14 @@ from collections import defaultdict
 
 from src.feed.repository import FeedRepository
 from src.feed.schemas import FeedResponse, FeedChain, FeedOperation
-from src.operations.repositories.operation_chain_repository import OperationChainRepository
+from src.operations.repository import OperationRepository
 from src.feed.models import FeedItemORM
 
 class FeedService:
     def __init__(
             self,
             repository: type[FeedRepository],
-            operation_repository: type[OperationChainRepository]):
+            operation_repository: type[OperationRepository]):
         self.repo = repository
         self.op_repo = operation_repository
 
