@@ -8,3 +8,6 @@ class UserCategoryNotFoundError(DomainException):
     def __init__(self, message="User category not found"):
         super().__init__(status_code=404, message=message)
 
+class UserCategoryTypeMismatchError(DomainException):
+    def __init__(self, message="User category type mismatch"):
+        super().__init__(status_code=400, message=message)

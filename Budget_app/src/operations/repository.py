@@ -128,14 +128,18 @@ class OperationRepository(UserScopedRepository[Operation]):
             self,
             chain_id: uuid.UUID,
             user_id: uuid.UUID
-    ) -> bool:
-        query = delete(Operation).where(
-            Operation.chain_id == chain_id,
-            Operation.user_id == user_id            
+    ) -> list[Operation]:
+        query = (
+            delete(Operation)
+            .where(
+                Operation.chain_id == chain_id,
+                Operation.user_id == user_id            
+            )
+            .returning(Operation)
         )
 
-        result = await self.session.execute(query)
-        return result.rowcount > 0
+        result = await self.session.scalars(query)
+        return result.all()
     
     async def update_with_chain(
         self,
