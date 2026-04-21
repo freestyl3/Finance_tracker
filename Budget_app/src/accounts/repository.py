@@ -51,18 +51,3 @@ class AccountRepository(UserScopedRepository[Account]):
 
         result = await self.session.scalars(query)
         return result.unique().one_or_none()
-
-    async def batch_update_balance(
-            self,
-            data_dict: dict,
-            user_id
-    ) -> None:
-        for account_id, amount in data_dict.items():
-            query = update(Account).where(
-                Account.id == account_id,
-                Account.user_id == user_id
-            ).values(
-                balance=(Account.balance - amount)
-            )
-
-            await self.session.execute(query)
