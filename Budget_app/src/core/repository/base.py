@@ -48,11 +48,23 @@ class BaseRepository(Generic[ModelType]):
         except IntegrityError:
             raise self._map_integrity_error(repo_action)
         
-    async def create(self, create_data: dict) -> ModelType:
+    async def create(self, create_data: dict, **kwargs) -> ModelType:
         obj = self.model(**create_data)
         self.session.add(obj)
         await self._flush_orm(RepoAction.CREATE)
         return obj
+    
+    async def batch_create(
+            self,
+            create_data_list: list[dict],
+            **kwargs
+    ) -> Sequence[ModelType]:
+        operations =[self.model(**data) for data in create_data_list]
+
+        self.session.add_all(operations)
+        await self._flush_orm(RepoAction.CREATE)
+        
+        return operations
 
     async def get_one_by(
             self,

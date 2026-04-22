@@ -46,18 +46,14 @@ class OperationCreate(OperationBase, OperationDateValidator):
     )
 
 
-class OperationInChainRead(OperationBase):
+class OperationRead(OperationBase):
     id: uuid.UUID
-    amount: Decimal
     ignore: bool
     category: CategoryRead
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class OperationRead(OperationInChainRead):
     account: AccountRead
     chain_id: uuid.UUID | None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OperationUpdate(BaseModel, OperationDateValidator):

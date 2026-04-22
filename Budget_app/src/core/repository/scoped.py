@@ -14,6 +14,18 @@ class UserScopedRepository(BaseRepository[ModelType]):
     async def create(self, create_data: dict, user_id: uuid.UUID) -> ModelType:
         data_with_user = {**create_data, "user_id": user_id}
         return await super().create(data_with_user)
+    
+    @override
+    async def batch_create(
+            self,
+            create_data_list: list[dict],
+            user_id: uuid.UUID
+    ) -> Sequence[ModelType]:
+        data_with_user = [
+            {**create_data, "user_id": user_id}
+            for create_data in create_data_list
+        ]
+        return await super().batch_create(data_with_user)
 
     @override
     async def get_one_by(

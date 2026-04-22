@@ -248,7 +248,9 @@ class OperationService:
             raise OperationInChainError()
         
         if deleted_op.related_operation_id:
-            raise OperationIsTransferError()
+            raise OperationIsTransferError(
+                message="Can't edit transfer on this endpoint. Use DELETE /transfers/{transfer_id}"
+            )
 
         await self._update_account_balance(
             account_id=deleted_op.account_id,
