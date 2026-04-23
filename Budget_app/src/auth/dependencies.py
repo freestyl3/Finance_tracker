@@ -5,7 +5,6 @@ from fastapi import Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer
 
 from src.auth.repository import UserRepository
-from src.database.repositories import get_user_repository
 from src.auth.service import AuthService
 from src.auth.models import User
 from src.auth.security import decode_token
@@ -52,8 +51,10 @@ async def get_user_id(
 async def validate_refresh_token(
         grant_type: Annotated[str, Form()],
         token: Annotated[str, Form()],
-        user_repo: UserRepository = Depends(get_user_repository)
+        uow: IUnitOfWork = Depends(get_uow)
 ):
+    user_repo = uow.get_repo(UserRepository)
+
     if grant_type != "refresh_token":
         raise HTTPException(status_code=401, detail="Invalid grant_type")
     

@@ -1,4 +1,4 @@
-from typing import Dict, Type, Callable
+from typing import Dict, Type
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
