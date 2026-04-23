@@ -1,12 +1,10 @@
 import uuid
 import datetime as dt
 
-from sqlalchemy import select, func, union_all, desc
+from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload
 
-from src.operations.models import Operation
-from src.chains.models import Chain
 from src.feed.models import FeedItemORM
 
 class FeedRepository:

@@ -28,7 +28,10 @@ class FeedChain(FeedItemBase):
     operations_count: int
     operations: list[OperationRead]
 
-FeedItem = Annotated[Union[FeedOperation, FeedChain], Field(discriminator="entry_type")]
+FeedItem = Annotated[
+    Union[FeedOperation, FeedChain],
+    Field(discriminator="entry_type")
+]
 
 class FeedResponse(BaseModel):
     items: list[FeedItem]
