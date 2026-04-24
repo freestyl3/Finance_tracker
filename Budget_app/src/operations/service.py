@@ -52,7 +52,8 @@ class OperationService:
     ) -> UserCategory:
         category = await self.cat_repo.get_one_by(
             user_id=user_id,
-            id=category_id            
+            id=category_id,
+            is_active=True
         )
 
         if not category:
@@ -157,6 +158,7 @@ class OperationService:
 
         return await self.op_repo.get_one_by(
             user_id,
+            True,
             joinedload(Operation.account),
             joinedload(Operation.category),
             id=operation_id
@@ -170,6 +172,7 @@ class OperationService:
     ) -> Operation:
         operation = await self.op_repo.get_one_by(
             user_id,
+            True,
             joinedload(Operation.account),
             joinedload(Operation.category),
             id=operation_id

@@ -38,7 +38,8 @@ class AccountRepository(UserScopedRepository[Account]):
             update(Account)
             .where(
                 Account.id == account_id,
-                Account.user_id == user_id
+                Account.user_id == user_id,
+                Account.is_active.is_(True)
             )
             .values(
                 balance=(Account.balance + delta)

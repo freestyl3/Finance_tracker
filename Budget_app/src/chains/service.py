@@ -17,6 +17,7 @@ from src.chains.exceptions import (
     NotEnoughOperationsForChainError, OperationsConflictError,
     TransferNotAllowedInChainError, ChainNotFoundError
 )
+from src.categories.user_categories.models import UserCategory
 from src.categories.user_categories.exceptions import (
     UserCategoryNotFoundError, UserCategoryTypeMismatchError
 )
@@ -97,14 +98,14 @@ class ChainService:
             suggested_type=self._suggest_type(total_amount)
         )
     
-    async def _validate_and_get_category_id(
+    async def _validate_and_get_category(
         self,
-        prev_category_id: uuid.UUID | None,
+        prev_category: UserCategory | None,
         new_category_id: uuid.UUID | None,
         prev_amount: Decimal,
         delta: Decimal,
         user_id: uuid.UUID
-    ) -> uuid.UUID | None:        
+    ) -> UserCategory | None:        
         new_amount = prev_amount + delta
         new_type = self._suggest_type(new_amount)
 
@@ -122,7 +123,7 @@ class ChainService:
                 raise UserCategoryTypeMismatchError(
                     message=f"Invalid category type. Expected: {new_type}"
                 )
-            return new_category_id
+            return category
 
         prev_type = self._suggest_type(prev_amount)
 
@@ -131,17 +132,17 @@ class ChainService:
                 message=f"Amount sign changed. Need category with type: {new_type}"
             )
 
-        return prev_category_id
+        return prev_category
     
     async def _finalize_chain_update(
             self,
             chain: Chain,
-            new_category_id: uuid.UUID | None,
+            new_category: UserCategory | None,
             operations: list[Operation],
             delta: Decimal
     ) -> Chain:
-        if chain.category_id != new_category_id:
-            chain.category_id = new_category_id
+        if chain.category != new_category:
+            chain.category = new_category
         
         chain.operations_count = len(operations)
         chain.amount += delta
@@ -164,7 +165,7 @@ class ChainService:
             allow_free=True
         )
         
-        data_dict = create_data = create_data.model_dump(exclude=["operation_ids",])
+        data_dict = create_data.model_dump(exclude=["operation_ids",])
 
         if meta.suggested_type:
             if not create_data.category_id:
@@ -196,9 +197,7 @@ class ChainService:
             user_id
         )
 
-        chain.operations = meta.operations
-
-        return chain
+        return await self.get_by_id(chain_id=chain.id, user_id=user_id)
     
     async def get_all(self, user_id: uuid.UUID) -> list[Chain]:
         return list(await self.chain_repo.get_all_by(user_id))
@@ -239,13 +238,19 @@ class ChainService:
                      message=f"Required category type: {self._suggest_type(chain.amount)}"
                  )
             
-            update_data["category_id"] = await self._validate_and_get_category_id(
-                prev_category_id=chain.category_id,
+            new_category = await self._validate_and_get_category(
+                prev_category_id=chain.category,
                 new_category_id=update_data["category_id"],
                 prev_amount=chain.amount,
                 delta=0,
                 user_id=user_id
             )
+
+            new_category_id = None
+            if new_category:
+                new_category_id = new_category.id
+
+            update_data["category_id"] = new_category_id
                     
         updated = await self.chain_repo.update(
             model_id=chain_id,
@@ -317,15 +322,15 @@ class ChainService:
         prev_amount = chain.amount
         delta = sum(operation.amount for operation in to_add)
 
-        new_category_id = await self._validate_and_get_category_id(
-            chain.category_id,
+        new_category = await self._validate_and_get_category(
+            chain.category,
             update_schema.category_id,
             prev_amount,
             delta,
             user_id
         )
 
-        if not to_add and chain.category_id == new_category_id:
+        if not to_add and chain.category_id == new_category:
             return chain
 
         new_operations = []
@@ -341,7 +346,7 @@ class ChainService:
 
         return await self._finalize_chain_update(
             chain,
-            new_category_id,
+            new_category,
             operations,
             delta
         )
@@ -362,15 +367,15 @@ class ChainService:
         prev_amount = chain.amount
         delta = -sum(operation.amount for operation in to_remove)
 
-        new_category_id = await self._validate_and_get_category_id(
-            chain.category_id,
+        new_category = await self._validate_and_get_category(
+            chain.category,
             update_schema.category_id,
             prev_amount,
             delta,
             user_id
         )
 
-        if not to_remove and chain.category_id == new_category_id:
+        if not to_remove and chain.category_id == new_category:
             return chain
         
         to_stay = [
@@ -391,7 +396,7 @@ class ChainService:
 
         return await self._finalize_chain_update(
             chain,
-            new_category_id,
+            new_category,
             to_stay,
             delta
         )

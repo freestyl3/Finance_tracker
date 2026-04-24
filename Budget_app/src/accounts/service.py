@@ -157,18 +157,19 @@ class AccountService:
             user_id: uuid.UUID
     ) -> bool:
         operations_exists = await self.op_repo.exists_by(
+            user_id=user_id,
             account_id=account_id
         )
 
-        if operations_exists:
-            await self.soft_delete(
-                account_id=account_id,
+        if not operations_exists:
+            await self.acc_repo.delete(
+                model_id=account_id,
                 user_id=user_id
             )
-        await self.acc_repo.delete(
-            model_id=account_id,
+            return True
+        
+        await self.soft_delete(
+            account_id=account_id,
             user_id=user_id
         )
-
         return True
-            

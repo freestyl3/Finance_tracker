@@ -48,6 +48,7 @@ class OperationCreate(OperationBase, OperationDateValidator):
 
 class OperationRead(OperationBase):
     id: uuid.UUID
+    amount: Decimal
     ignore: bool
     category: CategoryRead
     account: AccountRead

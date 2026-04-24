@@ -29,11 +29,11 @@ class TransferService:
     
     @property
     def cat_repo(self) -> UserCategoryRepository:
-        return self.uow.get_repo(OperationRepository)
+        return self.uow.get_repo(UserCategoryRepository)
     
     @property
     def acc_repo(self) -> AccountRepository:
-        return self.uow.get_repo(UserCategoryRepository)
+        return self.uow.get_repo(AccountRepository)
         
     async def _validate_account(
             self,
@@ -109,7 +109,7 @@ class TransferService:
 
         created_operations = list(
             await self.op_repo.batch_create(
-                create_data=operations,
+                create_data_list=operations,
                 user_id=user_id
             )
         )

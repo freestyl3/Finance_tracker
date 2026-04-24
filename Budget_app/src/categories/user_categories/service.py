@@ -61,7 +61,8 @@ class UserCategoryService:
     ) -> list[UserCategory]:
         return await self.cat_repo.get_all_by(
             user_id=user_id,
-            deletable=not(system)
+            deletable=not(system),
+            is_active=True
         )
 
     async def get_available_categories(
@@ -145,6 +146,7 @@ class UserCategoryService:
             user_id: uuid.UUID
     ) -> bool:
         operations_exists = await self.op_repo.exists_by(
+            user_id=user_id,
             category_id=category_id
         )
 
@@ -153,10 +155,10 @@ class UserCategoryService:
                 model_id=category_id,
                 user_id=user_id
             )
+            return True
+
         await self.soft_delete(
             category_id=category_id,
             user_id=user_id
         )
-
         return True
-         
