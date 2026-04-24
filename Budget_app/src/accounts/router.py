@@ -1,9 +1,6 @@
-from typing import List
 import uuid
-from decimal import Decimal
 
-from fastapi import APIRouter, Response, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Response, Query
 
 from src.accounts.dependencies import AccountServiceDep
 from src.accounts.schemas import AccountRead, AccountCreate, AccountUpdate
@@ -11,27 +8,16 @@ from src.auth.dependencies import CurrentUserID
 
 router = APIRouter()
 
-@router.post("/check_before_creation")
+@router.post("/check_before_creation", response_model=list[AccountRead])
 async def check_before_creation(
     account: AccountCreate,
     service: AccountServiceDep,
     user_id: CurrentUserID
 ):
-    result = await service.check_deleted(
+    return await service.check_deleted(
         create_data=account,
         user_id=user_id
-    )
-
-    if result:
-        return JSONResponse(
-            status_code=200,
-            content={
-                "account_id": str(result)
-            }
-        )
-    return Response(
-        status_code=204
-    )
+    ) or Response(status_code=404)
 
 @router.patch("/restore/{account_id}", response_model=AccountRead)
 async def restore_account(
@@ -47,22 +33,17 @@ async def create_account(
     service: AccountServiceDep,
     user_id: CurrentUserID
 ):
-    try:
-        return await service.create(account, user_id)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
+    return await service.create(account, user_id)
 
-@router.get("/", response_model=List[AccountRead])
+@router.get("/", response_model=list[AccountRead])
 async def get_accounts(
     service: AccountServiceDep,
-    user_id: CurrentUserID
+    user_id: CurrentUserID,
+    active: bool = Query(...)
 ):
-    return await service.get_all(user_id, only_active=False)
+    return await service.get_all(user_id, is_active=active)
 
-@router.put("/{account_id}", response_model=AccountRead)
+@router.patch("/{account_id}", response_model=AccountRead)
 async def update_account(
     account_id: uuid.UUID,
     account_update: AccountUpdate,
@@ -72,9 +53,10 @@ async def update_account(
     return await service.update(account_id, account_update, user_id)
 
 @router.delete("/{account_id}")
-async def soft_delete_account(
+async def delete_account(
     account_id: uuid.UUID,
     service: AccountServiceDep,
     user_id: CurrentUserID
 ):
-    return await service.soft_delete(account_id, user_id)
+    await service.delete(account_id, user_id)
+    return Response(status_code=204)

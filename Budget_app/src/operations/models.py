@@ -23,7 +23,7 @@ class Operation(Base):
         ForeignKey("user_categories.id", ondelete="CASCADE")
     )
     related_operation_id: Mapped[uuid.UUID|None] = mapped_column(
-        ForeignKey("operations.id", ondelete="cascade"),
+        ForeignKey("operations.id", ondelete="SET NULL"),
         nullable=True
     )
     chain_id: Mapped[uuid.UUID|None] = mapped_column(

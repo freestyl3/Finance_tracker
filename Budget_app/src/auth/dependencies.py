@@ -5,23 +5,23 @@ from fastapi import Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer
 
 from src.auth.repository import UserRepository
-from src.database.repositories import get_user_repository
 from src.auth.service import AuthService
 from src.auth.models import User
 from src.auth.security import decode_token
+from src.core.uow import IUnitOfWork
+from src.database.dependencies import get_uow
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login",
     refreshUrl="/auth/refresh"
 )
 
+async def get_auth_service(
+        uow: IUnitOfWork = Depends(get_uow)
+) -> AuthService:
+    return AuthService(uow)
 
-def get_auth_service(
-        user_repo: UserRepository = Depends(get_user_repository)
-):
-    return AuthService(user_repo)
-
-def get_user_id(
+async def get_user_id(
         token: str = Depends(oauth2_scheme)
 ) -> uuid.UUID:
     credentials_exception = HTTPException(
@@ -51,8 +51,10 @@ def get_user_id(
 async def validate_refresh_token(
         grant_type: Annotated[str, Form()],
         token: Annotated[str, Form()],
-        user_repo: UserRepository = Depends(get_user_repository)
+        uow: IUnitOfWork = Depends(get_uow)
 ):
+    user_repo = uow.get_repo(UserRepository)
+
     if grant_type != "refresh_token":
         raise HTTPException(status_code=401, detail="Invalid grant_type")
     
@@ -74,7 +76,7 @@ async def validate_refresh_token(
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid token data")
     
-    user = await user_repo.get_by_id(user_id)
+    user = await user_repo.get_one_by(id=user_id)
 
     if not user:
         raise HTTPException(status_code=401, detail="Invalid token data")
@@ -83,9 +85,10 @@ async def validate_refresh_token(
 
 async def get_current_user(
         user_id: uuid.UUID = Depends(get_user_id),
-        user_repo: UserRepository = Depends(get_user_repository)
-) -> User:    
-    user = await user_repo.get_by_id(user_id)
+        uow: IUnitOfWork = Depends(get_uow)
+) -> User:
+    user_repo = uow.get_repo(UserRepository)
+    user = await user_repo.get_one_by(id=user_id)
 
     if not user:
         raise HTTPException(

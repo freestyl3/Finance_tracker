@@ -1,34 +1,52 @@
 import uuid
 from decimal import Decimal
+from collections import defaultdict
 
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload, selectinload
-from sqlalchemy.orm.attributes import set_committed_value
-
+from src.core.uow import IUnitOfWork
 from src.chains.repository import ChainRepository
-from src.operations.repositories.operation_chain_repository import OperationChainRepository
+from src.operations.repository import OperationRepository
+from src.categories.user_categories.repository import UserCategoryRepository
+from src.accounts.repository import AccountRepository
 from src.chains.schemas import (
     ChainMetadata, ChainCreate, ChainOperationsUpdate, ChainUpdate
 )
 from src.chains.models import Chain
 from src.common.enums import OperationType
-from src.categories.user_categories.repository import UserCategoryRepository
 from src.operations.models import Operation
+from src.chains.exceptions import (
+    NotEnoughOperationsForChainError, OperationsConflictError,
+    TransferNotAllowedInChainError, ChainNotFoundError
+)
+from src.categories.user_categories.models import UserCategory
+from src.categories.user_categories.exceptions import (
+    UserCategoryNotFoundError, UserCategoryTypeMismatchError
+)
 
 class ChainService:
-    def __init__(
-            self,
-            chain_repository: ChainRepository,
-            operation_repository: OperationChainRepository,
-            category_repository: UserCategoryRepository
-    ):
-        self.repo = chain_repository
-        self.op_repo = operation_repository
-        self.cat_repo = category_repository
+    def __init__(self, uow: IUnitOfWork):
+        self.uow = uow
+
+    @property
+    def chain_repo(self) -> ChainRepository:
+        return self.uow.get_repo(ChainRepository)
+    
+    @property
+    def op_repo(self) -> OperationRepository:
+        return self.uow.get_repo(OperationRepository)
+    
+    @property
+    def cat_repo(self) -> UserCategoryRepository:
+        return self.uow.get_repo(UserCategoryRepository)
+    
+    @property
+    def acc_repo(self) -> AccountRepository:
+        return self.uow.get_repo(AccountRepository)
 
     def _suggest_type(self, amount: Decimal) -> OperationType | None:
-        if amount > 0: return OperationType.INCOME
-        if amount < 0: return OperationType.EXPENSE
+        if amount > 0:
+            return OperationType.INCOME
+        if amount < 0:
+            return OperationType.EXPENSE
         return None
     
     async def _update_operations(
@@ -62,17 +80,16 @@ class ChainService:
         operations_count = len(operations)
 
         if operations_count < 2:
-            raise ValueError("Can't create chain with less than 2 operations")
+            raise NotEnoughOperationsForChainError()
 
         if operations_count != len(operation_ids):
-            raise ValueError("Some operations not found, not yours or already in other chain")
+            raise OperationsConflictError()
 
         total_amount = sum(operation.amount for operation in operations)
-
         unique_types = {operation.category.type for operation in operations}
 
         if OperationType.TRANSFER in unique_types:
-            raise ValueError("Transfer can't be in chain")
+            raise TransferNotAllowedInChainError()
         
         return ChainMetadata(
             total_amount=total_amount,
@@ -81,16 +98,14 @@ class ChainService:
             suggested_type=self._suggest_type(total_amount)
         )
     
-    async def _validate_and_get_category_id(
+    async def _validate_and_get_category(
         self,
-        prev_category_id: uuid.UUID | None,
+        prev_category: UserCategory | None,
         new_category_id: uuid.UUID | None,
         prev_amount: Decimal,
         delta: Decimal,
         user_id: uuid.UUID
-    ) -> uuid.UUID | None:
-        prev_type = self._suggest_type(prev_amount)
-        
+    ) -> UserCategory | None:        
         new_amount = prev_amount + delta
         new_type = self._suggest_type(new_amount)
 
@@ -98,32 +113,40 @@ class ChainService:
             return None
 
         if new_category_id:
-            category = await self.cat_repo.get_by_id(new_category_id, user_id)
-            if not category or category.type != new_type:
-                raise ValueError(f"Category not found or invalid type. Expected: {new_type}")
-            return new_category_id
+            category = await self.cat_repo.get_one_by(
+                id=new_category_id,
+                user_id=user_id
+            )
+            if not category:
+                raise UserCategoryNotFoundError()
+            if category.type != new_type:
+                raise UserCategoryTypeMismatchError(
+                    message=f"Invalid category type. Expected: {new_type}"
+                )
+            return category
+
+        prev_type = self._suggest_type(prev_amount)
 
         if prev_type != new_type:
-            raise ValueError(f"Current category mismatch new sum sign. Need category with type: {new_type}")
+            raise UserCategoryTypeMismatchError(
+                message=f"Amount sign changed. Need category with type: {new_type}"
+            )
 
-        return prev_category_id
+        return prev_category
     
     async def _finalize_chain_update(
             self,
             chain: Chain,
-            new_category_id: uuid.UUID | None,
+            new_category: UserCategory | None,
             operations: list[Operation],
             delta: Decimal
     ) -> Chain:
-        if chain.category_id != new_category_id:
-            chain.category_id = new_category_id
+        if chain.category != new_category:
+            chain.category = new_category
         
         chain.operations_count = len(operations)
         chain.amount += delta
-
-        await self.repo.session.commit()
-
-        set_committed_value(chain, 'operations', operations)
+        chain.operations = operations
 
         return chain
 
@@ -133,7 +156,7 @@ class ChainService:
             user_id: uuid.UUID
     ) -> Chain:
         if len(create_data.operation_ids) < 2:
-            raise ValueError("Can't create chain with less than 2 operations")
+            raise NotEnoughOperationsForChainError()
 
         meta = await self._validate_and_get_metadata(
             operation_ids=create_data.operation_ids,
@@ -142,69 +165,55 @@ class ChainService:
             allow_free=True
         )
         
+        data_dict = create_data.model_dump(exclude=["operation_ids",])
+
         if meta.suggested_type:
             if not create_data.category_id:
                 raise ValueError("Category is required for this chain sum")
             
-            category = await self.cat_repo.get_by_id(
-                create_data.category_id, user_id
+            category = await self.cat_repo.get_one_by(
+                id=create_data.category_id,
+                user_id=user_id
             )
-            if not category or category.type != meta.suggested_type:
-                raise ValueError(f"Required category type: {meta.suggested_type}")
+
+            if not category:
+                raise UserCategoryNotFoundError()
+            
+            if category.type != meta.suggested_type:
+                raise UserCategoryTypeMismatchError(
+                    message=f"Required category type: {meta.suggested_type}"
+                )
         else:
-            create_data.category_id = None
+            data_dict["category_id"] = None
 
-        ext_data = {}
+        data_dict["amount"] = meta.total_amount
+        data_dict["operations_count"] = meta.operations_count
 
-        ext_data["amount"] = meta.total_amount
-        ext_data["operations_count"] = meta.operations_count
+        chain = await self.chain_repo.create(data_dict, user_id)
 
-        try:
-            chain = await self.repo.create(
-                create_data,
-                ext_data,
-                user_id
-            )
+        await self._update_operations(
+            create_data.operation_ids,
+            chain.id,
+            user_id
+        )
 
-            await self._update_operations(
-                create_data.operation_ids,
-                chain.id,
-                user_id
-            )
-
-            await self.repo.session.commit()
-
-            set_committed_value(chain, 'operations', list(meta.operations))
-
-            return chain
-        
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
+        return await self.get_by_id(chain_id=chain.id, user_id=user_id)
     
     async def get_all(self, user_id: uuid.UUID) -> list[Chain]:
-        return list(
-            await self.repo.get_all(
-                user_id,
-                joinedload(Chain.category)
-            )
-        )
+        return list(await self.chain_repo.get_all_by(user_id))
     
     async def get_by_id(
             self,
             chain_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> Chain:
-        chain = await self.repo.get_by_id(
-            chain_id,
-            user_id,
-            joinedload(Chain.category),
-            selectinload(Chain.operations).joinedload(Operation.category),
-            selectinload(Chain.operations).joinedload(Operation.account)
+        chain = await self.chain_repo.get_one_by(
+            id=chain_id,
+            user_id=user_id
         )
 
         if not chain:
-            raise ValueError("Chain not found")
+            raise ChainNotFoundError()
 
         return chain
     
@@ -215,9 +224,6 @@ class ChainService:
             user_id: uuid.UUID
     ) -> Chain:
         chain = await self.get_by_id(chain_id, user_id)
-
-        if not chain:
-            raise ValueError("Chain not found")
         
         update_data = update_schema.model_dump(exclude_unset=True)
 
@@ -227,34 +233,35 @@ class ChainService:
         category = chain.category
 
         if "category_id" in update_data:
-            new_cat_id = update_data["category_id"]
-            expected_type = self._suggest_type(chain.amount)
-
-            if new_cat_id is None:
-                if expected_type is not None:
-                    raise ValueError(
-                        f"Required category type: {expected_type}"
-                    )
-            else:
-                if new_cat_id != chain.category_id:
-                    category = await self.cat_repo.get_by_id(new_cat_id, user_id)
-                    if not category:
-                        raise ValueError("Category not found")
-                    
-                    if category.type != expected_type:
-                        raise ValueError(f"Required category type: {expected_type}")
-        try:
-            updated = await self.repo.update(chain_id, update_schema, user_id)
-
-            await self.repo.session.commit()
-
-            set_committed_value(updated, 'category', category)
-            set_committed_value(updated, 'operations', chain.operations)
+            if update_data["category_id"] is None and chain.amount != 0:
+                 raise UserCategoryTypeMismatchError(
+                     message=f"Required category type: {self._suggest_type(chain.amount)}"
+                 )
             
-            return updated
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
+            new_category = await self._validate_and_get_category(
+                prev_category_id=chain.category,
+                new_category_id=update_data["category_id"],
+                prev_amount=chain.amount,
+                delta=0,
+                user_id=user_id
+            )
+
+            new_category_id = None
+            if new_category:
+                new_category_id = new_category.id
+
+            update_data["category_id"] = new_category_id
+                    
+        updated = await self.chain_repo.update(
+            model_id=chain_id,
+            update_data=update_data,
+            user_id=user_id
+        )
+
+        updated.category = category
+        updated.operations = chain.operations
+        
+        return updated
     
     async def delete(
             self,
@@ -262,25 +269,27 @@ class ChainService:
             cascade: bool,
             user_id: uuid.UUID
     ) -> bool:
-        try:
-            deleted = await self.repo.delete(chain_id, user_id)
+        if cascade:
+            deleted_ops = await self.op_repo.delete_chain_operations(
+                chain_id=chain_id,
+                user_id=user_id
+            )
 
-            if not deleted:
-                raise ValueError("Chain not found")
-            
-            # if cascade:
-            #     await self.op_repo.delete_chain_operations(chain_id, user_id)
-            #     await self.acc_repo.update_balance(
-            #         account_id=deleted.account_id,
-            #         delta=-deleted.amount,
-            #         user_id=user_id
-            #     )
+            if deleted_ops:
+                account_deltas = defaultdict(Decimal)
 
-            await self.repo.session.commit()
-            return True
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
+                for op in deleted_ops:
+                    account_deltas[op.account_id] += op.amount
+
+                for account_id, amount in account_deltas.items():
+                    await self.acc_repo.update_balance(
+                        account_id=account_id,
+                        delta=-amount,
+                        user_id=user_id
+                    )
+
+        await self.chain_repo.delete(model_id=chain_id, user_id=user_id)
+        return True
     
     async def add_operations_into_chain(
             self,
@@ -298,12 +307,12 @@ class ChainService:
         )
 
         if len(requested_operations) != len(set(update_schema.operation_ids)):
-            raise ValueError("Some operations were not found or don't belong to you")
+            raise OperationsConflictError()
         
         unique_types = {operation.category.type for operation in requested_operations}
 
         if OperationType.TRANSFER in unique_types:
-            raise ValueError("Transfer can't be in chain")
+            raise TransferNotAllowedInChainError()
 
         to_add = [
             operation for operation in requested_operations
@@ -313,38 +322,34 @@ class ChainService:
         prev_amount = chain.amount
         delta = sum(operation.amount for operation in to_add)
 
-        new_category_id = await self._validate_and_get_category_id(
-            chain.category_id,
+        new_category = await self._validate_and_get_category(
+            chain.category,
             update_schema.category_id,
             prev_amount,
             delta,
             user_id
         )
 
-        if not to_add and chain.category_id == new_category_id:
+        if not to_add and chain.category_id == new_category:
             return chain
 
-        try:
-            new_operations = []
+        new_operations = []
 
-            if to_add:
-                new_operations = await self._update_operations(
-                    [operation.id for operation in to_add],
-                    chain_id,
-                    user_id
-                )
-
-            operations = chain.operations + new_operations
-
-            return await self._finalize_chain_update(
-                chain,
-                new_category_id,
-                operations,
-                delta
+        if to_add:
+            new_operations = await self._update_operations(
+                [operation.id for operation in to_add],
+                chain_id,
+                user_id
             )
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
+
+        operations = chain.operations + new_operations
+
+        return await self._finalize_chain_update(
+            chain,
+            new_category,
+            operations,
+            delta
+        )
         
     async def remove_operations_from_chain(
             self,
@@ -362,15 +367,15 @@ class ChainService:
         prev_amount = chain.amount
         delta = -sum(operation.amount for operation in to_remove)
 
-        new_category_id = await self._validate_and_get_category_id(
-            chain.category_id,
+        new_category = await self._validate_and_get_category(
+            chain.category,
             update_schema.category_id,
             prev_amount,
             delta,
             user_id
         )
 
-        if not to_remove and chain.category_id == new_category_id:
+        if not to_remove and chain.category_id == new_category:
             return chain
         
         to_stay = [
@@ -382,20 +387,16 @@ class ChainService:
             await self.delete(chain_id, user_id)
             return None
 
-        try:
-            if to_remove:
-                await self._update_operations(
-                    [operation.id for operation in to_remove],
-                    None,
-                    user_id
-                )
-
-            return await self._finalize_chain_update(
-                chain,
-                new_category_id,
-                to_stay,
-                delta
+        if to_remove:
+            await self._update_operations(
+                [operation.id for operation in to_remove],
+                None,
+                user_id
             )
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
+
+        return await self._finalize_chain_update(
+            chain,
+            new_category,
+            to_stay,
+            delta
+        )

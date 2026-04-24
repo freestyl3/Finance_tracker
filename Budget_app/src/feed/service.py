@@ -2,18 +2,23 @@ import uuid
 import datetime as dt
 from collections import defaultdict
 
+from src.core.uow import IUnitOfWork
 from src.feed.repository import FeedRepository
 from src.feed.schemas import FeedResponse, FeedChain, FeedOperation
-from src.operations.repositories.operation_chain_repository import OperationChainRepository
+from src.operations.repository import OperationRepository
 from src.feed.models import FeedItemORM
 
 class FeedService:
-    def __init__(
-            self,
-            repository: type[FeedRepository],
-            operation_repository: type[OperationChainRepository]):
-        self.repo = repository
-        self.op_repo = operation_repository
+    def __init__(self, uow: IUnitOfWork):
+        self.uow = uow
+
+    @property
+    def feed_repo(self) -> FeedRepository:
+        return self.uow.get_repo(FeedRepository)
+    
+    @property
+    def op_repo(self) -> OperationRepository:
+        return self.uow.get_repo(OperationRepository)
 
     async def get_feed(
             self,
@@ -21,7 +26,7 @@ class FeedService:
             month: int, 
             user_id: uuid.UUID
     ):
-        items: list[FeedItemORM] = await self.repo.get_monthly_feed(
+        items: list[FeedItemORM] = await self.feed_repo.get_monthly_feed(
             year=year,
             month=month,
             user_id=user_id
@@ -56,7 +61,7 @@ class FeedService:
                 )
 
         first_day_of_current = dt.date(year, month, 1)
-        next_hint = await self.repo.get_next_active_month(user_id, first_day_of_current)
+        next_hint = await self.feed_repo.get_next_active_month(user_id, first_day_of_current)
         
         return FeedResponse(
             items=prepared_items,

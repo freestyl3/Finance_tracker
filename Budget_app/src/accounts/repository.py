@@ -1,37 +1,31 @@
 import uuid
 from decimal import Decimal
+from typing import override
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import insert, update
+from sqlalchemy import update
 
-from src.base.repository import ActiveNamedRepository
+from src.core.repository.scoped import UserScopedRepository
+from src.core.enums import RepoAction
 from src.accounts.models import Account
-from src.accounts.schemas import AccountCreate, AccountUpdate
 from src.common.enums import Currency
+from src.accounts.exceptions import AccountAlreadyExistsError, AccountNotFoundError
 
-class AccountRepository(
-    ActiveNamedRepository[Account, AccountCreate, AccountUpdate]
-):
+class AccountRepository(UserScopedRepository[Account]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=Account, session=session)
 
-    async def restore(
-            self,
-            account_id: uuid.UUID,
-            user_id: uuid.UUID
-    ) -> Account:
-        query = (
-            update(Account)
-            .where(
-                Account.id == account_id,
-                Account.user_id == user_id
-            )
-            .values(is_active=True)
-            .returning(Account)
-        )
-
-        result = await self.session.scalars(query)
-        return result.unique().one_or_none()
+    @override
+    def _map_integrity_error(self, repo_action: RepoAction) -> Exception:
+        if repo_action == RepoAction.CREATE:
+            return AccountAlreadyExistsError()
+        elif repo_action == RepoAction.UPDATE:
+            return AccountAlreadyExistsError()
+        return super()._map_integrity_error(repo_action)
+    
+    @override
+    def _not_found(self) -> Exception:
+        return AccountNotFoundError()
     
     async def update_balance(
             self,
@@ -44,7 +38,8 @@ class AccountRepository(
             update(Account)
             .where(
                 Account.id == account_id,
-                Account.user_id == user_id
+                Account.user_id == user_id,
+                Account.is_active.is_(True)
             )
             .values(
                 balance=(Account.balance + delta)
@@ -57,19 +52,3 @@ class AccountRepository(
 
         result = await self.session.scalars(query)
         return result.unique().one_or_none()
-
-    async def batch_update_balance(
-            self,
-            data_dict: dict,
-            user_id
-    ) -> None:
-        for account_id, amount in data_dict.items():
-            query = update(Account).where(
-                Account.id == account_id,
-                Account.user_id == user_id
-            ).values(
-                balance=(Account.balance - amount)
-            )
-
-            await self.session.execute(query)
-    

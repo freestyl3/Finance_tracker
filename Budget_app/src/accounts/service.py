@@ -1,27 +1,30 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy.exc import IntegrityError
-
-from src.base.service import ActiveNamedService
 from src.accounts.repository import AccountRepository
-from src.accounts.schemas import AccountCreate
+from src.accounts.schemas import AccountCreate, AccountUpdate
 from src.accounts.models import Account
 from src.categories.user_categories.repository import UserCategoryRepository
-from src.operations.repositories.repository import OperationRepository
+from src.operations.repository import OperationRepository
 from src.common.enums import OperationType
-from src.operations.schemas import OperationCreate
+from src.core.uow import IUnitOfWork
+from src.accounts.exceptions import AccountNotFoundError
 
-class AccountService(ActiveNamedService[AccountRepository]):
-    def __init__(
-            self,
-            account_repository: AccountRepository,
-            user_category_repository: UserCategoryRepository,
-            operation_repository: OperationRepository
-    ):
-        super().__init__(account_repository)
-        self.cat_repo = user_category_repository
-        self.op_repo = operation_repository
+class AccountService:
+    def __init__(self, uow: IUnitOfWork):
+        self.uow = uow
+
+    @property
+    def acc_repo(self) -> AccountRepository:
+        return self.uow.get_repo(AccountRepository)
+    
+    @property
+    def cat_repo(self) -> UserCategoryRepository:
+        return self.uow.get_repo(UserCategoryRepository)
+    
+    @property
+    def op_repo(self) -> OperationRepository:
+        return self.uow.get_repo(OperationRepository)
 
     async def _get_correction_category(
             self,
@@ -45,63 +48,128 @@ class AccountService(ActiveNamedService[AccountRepository]):
             create_data: AccountCreate,
             user_id: uuid.UUID
     ) -> Account:
-        try:
-            account = await self.repo.create(
-                account_data=create_data,
-                user_id=user_id
-            )
+        data_dict = create_data.model_dump(exclude_unset=True)
 
+        account = await self.acc_repo.create(
+            create_data=data_dict,
+            user_id=user_id
+        )
 
-            if create_data.balance:
-                await self.repo.session.flush()
-
-                category = await self._get_correction_category(
-                    create_data.balance,
-                    user_id=user_id
-                )
-
-                await self.op_repo.create(
-                    OperationCreate.model_construct(
-                        amount=create_data.balance,
-                        description="Начальная корректировка счета",
-                        account_id=account.id,
-                        category_id=category.id
-                    ),
-                    user_id=user_id
-                )
-
-            await self.repo.session.commit()
-            await self.repo.session.refresh(account)
-
+        if not create_data.balance:
             return account
-        except IntegrityError as e:
-            await self.repo.session.rollback()
-            raise ValueError(str(e))
+        
+        await self.uow.flush()
+
+        category = await self._get_correction_category(
+            create_data.balance,
+            user_id=user_id
+        )
+        
+        await self.op_repo.create(
+            {
+                "amount": create_data.balance,
+                "description": "Начальная корректировка счета",
+                "account_id": account.id,
+                "category_id": category.id
+            },
+            user_id=user_id
+        )
+
+        return account
     
     async def check_deleted(
             self,
             create_data: AccountCreate,
             user_id: uuid.UUID
-    ) -> uuid.UUID:
-        existing = await self.repo.get_one_by(
+    ) -> list[Account]:
+        return await self.acc_repo.get_all_by(
             user_id=user_id,
             **create_data.model_dump(exclude=["balance", ]),
             is_active=False
-        )
-
-        if existing:
-            return existing.id
-        return None
+        ) or []
         
     async def restore(
             self,
             account_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> Account:
-        account = await self.repo.restore(
+        return await self.acc_repo.update(
+            model_id=account_id,
+            update_data={
+                'is_active': True
+            },
+            user_id=user_id
+        )
+    
+    async def get_all(
+            self,
+            user_id: uuid.UUID,
+            is_active: bool = True
+    ) -> list[Account]:
+        return list(
+            await self.acc_repo.get_all_by(
+                user_id=user_id,
+                is_active=is_active
+            )
+        )
+    
+    async def update(
+            self,
+            account_id: uuid.UUID,
+            update_data: AccountUpdate,
+            user_id: uuid.UUID
+    ) -> Account:
+        update_dict = update_data.model_dump(exclude_unset=True)
+
+        if not update_dict:
+            account = self.acc_repo.get_one_by(
+                account_id=account_id,
+                user_id=user_id
+            )
+
+            if not account:
+                raise AccountNotFoundError()
+            
+            return account
+
+        return await self.acc_repo.update(
+            model_id=account_id,
+            update_data=update_data.model_dump(exclude_unset=True),
+            user_id=user_id
+        )
+    
+    async def soft_delete(
+            self,
+            account_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> Account:
+        return await self.acc_repo.update(
+            model_id=account_id,
+            update_data={
+                "is_active": False
+            },
+            user_id=user_id
+        )
+    
+    async def delete(
+            self,
+            account_id: uuid.UUID,
+            user_id: uuid.UUID
+    ) -> bool:
+        operations_exists = await self.op_repo.exists_by(
+            user_id=user_id,
+            account_id=account_id
+        )
+
+        if not operations_exists:
+            await self.acc_repo.delete(
+                model_id=account_id,
+                user_id=user_id
+            )
+            return True
+        
+        await self.soft_delete(
             account_id=account_id,
             user_id=user_id
         )
-
-        await self.repo.session.commit()
-        return account
+        return True

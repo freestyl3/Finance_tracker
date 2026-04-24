@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, HTTPException, Response, Query
+from fastapi import APIRouter, Response, Query
 
 from src.auth.dependencies import CurrentUserID
 from src.chains.schemas import (
@@ -8,7 +8,6 @@ from src.chains.schemas import (
     ChainUpdate
 )
 from src.chains.dependencies import ChainServiceDep
-from src.pagination import PaginationParams
 
 router = APIRouter()
 
@@ -18,10 +17,7 @@ async def create_chain(
     service: ChainServiceDep,
     user_id: CurrentUserID
 ):
-    try:
-        return await service.create(chain_create, user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await service.create(chain_create, user_id)
 
 @router.get("/", response_model=list[ChainShortRead])
 async def get_all_chains(
@@ -36,10 +32,7 @@ async def get_chain(
     service: ChainServiceDep,
     user_id: CurrentUserID
 ):
-    try:
-        return await service.get_by_id(chain_id, user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await service.get_by_id(chain_id, user_id)
     
 @router.post("/{chain_id}/operations/add", response_model=ChainDetailRead)
 async def add_operations_to_chain(
@@ -48,14 +41,11 @@ async def add_operations_to_chain(
     service: ChainServiceDep,
     user_id: CurrentUserID
 ):
-    try:
-        return await service.add_operations_into_chain(
-            chain_id,
-            update_schema,
-            user_id
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await service.add_operations_into_chain(
+        chain_id,
+        update_schema,
+        user_id
+    )
     
 @router.post("/{chain_id}/operations/remove", response_model=ChainDetailRead)
 async def remove_operations_from_chain(
@@ -64,30 +54,24 @@ async def remove_operations_from_chain(
     service: ChainServiceDep,
     user_id: CurrentUserID
 ):
-    try:
-        return await service.remove_operations_from_chain(
-            chain_id,
-            update_schema,
-            user_id
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await service.remove_operations_from_chain(
+        chain_id,
+        update_schema,
+        user_id
+    )
 
-@router.put("/{chain_id}", response_model=ChainDetailRead)
+@router.patch("/{chain_id}", response_model=ChainDetailRead)
 async def update_chain(
     chain_id: uuid.UUID,
     update_schema: ChainUpdate,
     service: ChainServiceDep,
     user_id: CurrentUserID
 ):
-    try:
-        return await service.update(
-            chain_id=chain_id,
-            update_schema=update_schema,
-            user_id=user_id
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await service.update(
+        chain_id=chain_id,
+        update_schema=update_schema,
+        user_id=user_id
+    )
 
 @router.delete("/{chain_id}")
 async def delete_chain(
@@ -96,8 +80,5 @@ async def delete_chain(
     user_id: CurrentUserID,
     cascade: bool = Query(False, description="Если True, будут удалены и все операции внутри цепочки")
 ):
-    try:
-        await service.delete(chain_id, cascade, user_id)
-        return Response(status_code=204)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    await service.delete(chain_id, cascade, user_id)
+    return Response(status_code=204)

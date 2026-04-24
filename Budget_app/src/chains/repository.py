@@ -1,46 +1,49 @@
 import uuid
+from typing import override
 
+from sqlalchemy import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete
+from sqlalchemy.orm import joinedload, selectinload
 
-from src.chains.schemas import ChainCreate, ChainUpdate
 from src.chains.models import Chain
-from src.base.repository import BaseRepository
+from src.operations.models import Operation
+from src.core.repository.scoped import UserScopedRepository
+from src.chains.exceptions import ChainNotFoundError
 
-class ChainRepository(
-    BaseRepository[Chain, ChainCreate, ChainUpdate]
-):
+class ChainRepository(UserScopedRepository[Chain]):
     def __init__(self, session: AsyncSession):
         super().__init__(Chain, session)
 
-    async def create(
-            self,
-            chain_data: ChainCreate,
-            ext_data: dict,
-            user_id: uuid.UUID
-    ) -> Chain:
-        create_data = chain_data.model_dump(exclude=["operation_ids",])
-        create_data.update(ext_data)
+    @override
+    def _not_found(self) -> Exception:
+        return ChainNotFoundError()
 
-        chain = Chain(
-            **create_data,
-            user_id=user_id
+    @override
+    async def get_one_by(
+        self,
+        user_id: uuid.UUID,
+        unique: bool = True,
+        *load_options,
+        **fields
+    ) -> Chain:
+        load_options += (
+            joinedload(Chain.category),
+            selectinload(Chain.operations).joinedload(Operation.category),
+            selectinload(Chain.operations).joinedload(Operation.account),
         )
 
-        self.session.add(chain)
-        await self.session.flush()
-
-        return chain
+        return await super().get_one_by(user_id, unique, *load_options, **fields)
     
-    async def delete(
-            self,
-            chain_id: uuid.UUID,
-            user_id: uuid.UUID
-    ) -> Chain:
-        query = delete(Chain).where(
-            Chain.id == chain_id,
-            Chain.user_id == user_id
-        ).returning(Chain)
-
-        result = await self.session.execute(query)
-        return result.scalars().unique().one_or_none()
+    @override
+    async def get_all_by(
+        self,
+        user_id: uuid.UUID,
+        unique: bool = True,
+        *load_options,
+        **fields
+    ) -> Sequence[Chain]:
+        load_options += (
+            joinedload(Chain.category),
+        )
+        return await super().get_all_by(user_id, unique, *load_options, **fields)
+    

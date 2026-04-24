@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Response, HTTPException
+from fastapi import APIRouter, Response
 
 from src.categories.base.schemas import CategoryCreate, CategoryUpdate
 from src.categories.user_categories.schemas import UserCategoryRead
@@ -31,10 +31,7 @@ async def create_user_category(
     service: UserCategoryServiceDep,
     user_id: CurrentUserID
 ):
-    try:
-        return await service.create(category, user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await service.create(category, user_id)
 
 @router.get("/", response_model=list[UserCategoryRead])
 async def get_all_user_categories(
@@ -43,7 +40,7 @@ async def get_all_user_categories(
 ):
     return await service.get_all(user_id)
 
-@router.put("/{category_id}", response_model=UserCategoryRead)
+@router.patch("/{category_id}", response_model=UserCategoryRead)
 async def update_user_category(
     category_id: uuid.UUID,
     category_update: CategoryUpdate,
@@ -58,8 +55,5 @@ async def delete_user_category(
     service: UserCategoryServiceDep,
     user_id: CurrentUserID
 ):
-    result = await service.soft_delete(category_id, user_id)
-
-    if result:
-        return Response(status_code=204)
-    raise HTTPException(status_code=404, detail="User category not found")
+    await service.delete(category_id, user_id)
+    return Response(status_code=204)
