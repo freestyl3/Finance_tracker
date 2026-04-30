@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from sqlalchemy import String, ForeignKey, Numeric, func
+from sqlalchemy import String, ForeignKey, Numeric, func, Index
 
 from src.database.base import Base
 
@@ -29,3 +29,8 @@ class Chain(Base):
 
     category: Mapped["UserCategory"] = relationship()
     operations: Mapped[list["Operation"]] = relationship()
+
+    __table_args__ = (
+        Index("idx_chains_user_date", "user_id", "date"),
+        Index("idx_chains_category_date", "category_id", "date")
+    )

@@ -1,3 +1,5 @@
+import datetime as dt
+
 from fastapi import APIRouter, Query
 
 from src.feed.schemas import FeedResponse
@@ -10,7 +12,11 @@ router = APIRouter()
 async def get_feed(
     service: FeedServiceDep,
     user_id: CurrentUserID,
-    year: int = Query(...),
-    month: int = Query(...)
+    date_from: dt.date | None = Query(None),
+    date_to: dt.date | None = Query(None)
 ):
-    return await service.get_feed(year, month, user_id)
+    return await service.get_feed(
+        user_id=user_id,
+        date_from=date_from,
+        date_to=date_to
+    )

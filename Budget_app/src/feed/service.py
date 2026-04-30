@@ -7,6 +7,7 @@ from src.feed.repository import FeedRepository
 from src.feed.schemas import FeedResponse, FeedChain, FeedOperation
 from src.operations.repository import OperationRepository
 from src.feed.models import FeedItemORM
+from src.common.utils import get_month_boundaries
 
 class FeedService:
     def __init__(self, uow: IUnitOfWork):
@@ -22,18 +23,32 @@ class FeedService:
 
     async def get_feed(
             self,
-            year: int,
-            month: int, 
-            user_id: uuid.UUID
+            user_id: uuid.UUID,
+            date_from: dt.date | None,
+            date_to: dt.date | None,
+            account_ids: list[uuid.UUID] | None = None,
+            category_ids: list[uuid.UUID] | None = None,
+            category_inside_chains: bool =  False
     ):
-        items: list[FeedItemORM] = await self.feed_repo.get_monthly_feed(
-            year=year,
-            month=month,
+        today = dt.date.today()
+
+        if date_from is None and date_to is None:
+            date_from, date_to = get_month_boundaries(today.year, today.month)
+        else:
+            date_from = date_from or dt.date(2000, 1, 1)
+            date_to = date_to or today
+
+        items = await self.feed_repo.get_monthly_feed(
+            start_date=date_from,
+            end_date=date_to,
             user_id=user_id
-            # filters.account_ids,
-            # filters.category_ids
         )
 
+        max_past_date = await self.feed_repo.get_max_date_before(
+            user_id=user_id,
+            before_date=date_from
+        )
+        
         chain_ids = [i.id for i in items if i.entry_type == "chain"]
 
         operations = await self.op_repo.get_chains_operations(
@@ -60,14 +75,19 @@ class FeedService:
                     FeedOperation.model_validate(item)
                 )
 
-        first_day_of_current = dt.date(year, month, 1)
-        next_hint = await self.feed_repo.get_next_active_month(user_id, first_day_of_current)
+        if max_past_date:
+            next_start, next_end = get_month_boundaries(
+                max_past_date.year, 
+                max_past_date.month
+            )
+            has_more = True
+        else:
+            next_start, next_end = None, None
+            has_more = False
         
         return FeedResponse(
             items=prepared_items,
-            next_month=next_hint["month"] if next_hint else None,
-            next_year=next_hint["year"] if next_hint else None,
-            has_more=next_hint is not None,
-            limit=0,
-            offset=0
+            next_start=next_start,
+            next_end=next_end,
+            has_more=has_more
         )

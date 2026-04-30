@@ -31,7 +31,7 @@ class FeedItemORM(Base):
             Operation.user_id,
             literal_column("0", Integer).label("operations_count"),
             literal_column("'operation'", String).label("entry_type")
-        ),
+        ).where(Operation.chain_id.is_(None)),
         select(
             Chain.id,
             Chain.amount,

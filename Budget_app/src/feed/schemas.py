@@ -35,6 +35,6 @@ FeedItem = Annotated[
 
 class FeedResponse(BaseModel):
     items: list[FeedItem]
-    next_month: int | None
-    next_year: int | None
+    next_start: dt.date | None
+    next_end: dt.date | None
     has_more: bool
