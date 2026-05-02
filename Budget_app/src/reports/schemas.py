@@ -1,37 +1,31 @@
-import datetime as dt
+from pydantic import BaseModel, ConfigDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from src.categories.base.schemas import CategoryRead
 
-# from src.base.filters import OperationFilterBase
-
-class GroupedOperation(BaseModel):
-    category_id: int
-    category_name: str
+class GroupedCategory(BaseModel):
+    category: CategoryRead
+    amount: float
+    
+    model_config = ConfigDict(from_attributes=True)
+    
+class CategoryWithTotal(BaseModel):
+    categories: list[GroupedCategory]
     total_amount: float
 
-
-class GroupedExpense(GroupedOperation):
-    pass
-
-
-class GroupedIncome(GroupedOperation):
-    pass
-
-
-class TotalOperationSum(BaseModel):
-    total_sum: float | None
-    categories: list[GroupedOperation]
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class TotalExpenseSum(TotalOperationSum):
-    pass
-
-
-class TotalIncomeSum(TotalOperationSum):
-    pass
-
-
-# class ReportFilter(OperationFilterBase):
-#     pass
+class ReportResponse(BaseModel):
+    incomes: CategoryWithTotal
+    expenses: CategoryWithTotal
+    has_more: bool
+    
+# {
+#   "incomes": {
+#      "categories": {
+#          [
+#              "id": id,
+#              "name": name,
+#              "amount": float
+#          ]
+#      },
+#      "total_amount": float
+#    }
+# }
