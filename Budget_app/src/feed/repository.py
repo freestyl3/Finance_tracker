@@ -7,31 +7,34 @@ from sqlalchemy.orm import joinedload
 
 from src.feed.models import FeedItemORM
 from src.operations.models import Operation
+from src.categories.user_categories.models import UserCategory
+from src.feed.filters import FeedFilter
 
 class FeedRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    def _filter_by_params(
-        self,
-        query: Select,
-        account_ids: list[uuid.UUID] | None,
-        category_ids: list[uuid.UUID] | None,
-        category_inside_chains: bool = False
-    ) -> Select:
-        if account_ids:
+    def _filter_by_params(self, query: Select, filters: FeedFilter) -> Select:
+        if filters.type:
+            query = query.join(
+                UserCategory, FeedItemORM.category_id == UserCategory.id
+            ).where(
+                UserCategory.type == filters.type
+            )
+
+        if filters.account_ids:
             chain_has_account = (
                 select(1)
                 .where(
                     Operation.chain_id == FeedItemORM.id,
-                    Operation.account_id.in_(account_ids)
+                    Operation.account_id.in_(filters.account_ids)
                 )
                 .exists()
             )
 
             query = query.where(
                 or_(
-                    FeedItemORM.account_id.in_(account_ids),
+                    FeedItemORM.account_id.in_(filters.account_ids),
                     and_(
                         FeedItemORM.entry_type == "chain",
                         chain_has_account
@@ -39,20 +42,20 @@ class FeedRepository:
                 )
             )
 
-        if category_ids:
-            if category_inside_chains:
+        if filters.category_ids:
+            if filters.category_inside_chains:
                 chain_has_category = (
                     select(1)
                     .where(
                         Operation.chain_id == FeedItemORM.id,
-                        Operation.category_id.in_(category_ids)
+                        Operation.category_id.in_(filters.category_ids)
                     )
                     .exists()
                 )
                 
                 query = query.where(
                     or_(
-                        FeedItemORM.category_id.in_(category_ids),
+                        FeedItemORM.category_id.in_(filters.category_ids),
                         and_(
                             FeedItemORM.entry_type == "chain",
                             chain_has_category
@@ -60,24 +63,36 @@ class FeedRepository:
                     )
                 )
             else:
-                query = query.where(FeedItemORM.category_id.in_(category_ids))
+                query = query.where(FeedItemORM.category_id.in_(filters.category_ids))
+
+        if filters.search_query:
+            query = query.where(
+                FeedItemORM.description.ilike(f"%{filters.search_query}%")
+            )
+
+        if filters.cursor_date and filters.cursor_id:
+            query = query.where(
+                or_(
+                    FeedItemORM.date < filters.cursor_date,
+                    and_(
+                        FeedItemORM.date == filters.cursor_date,
+                        FeedItemORM.id < filters.cursor_id
+                    )
+                )
+            )
 
         return query
 
     async def get_monthly_feed(
         self,
-        start_date: dt.date,
-        end_date: dt.date,
         user_id: uuid.UUID,
-        account_ids: list[uuid.UUID] | None = None,
-        category_ids: list[uuid.UUID] | None = None,
-        category_inside_chains: bool = False
+        filters: FeedFilter
     ) -> Sequence[FeedItemORM]:
         query = (
             select(FeedItemORM)
             .where(
                 FeedItemORM.user_id == user_id,
-                FeedItemORM.date.between(start_date, end_date),
+                FeedItemORM.date.between(filters.date_from, filters.date_to),
             )
             .options(
                 joinedload(FeedItemORM.account),
@@ -86,12 +101,14 @@ class FeedRepository:
             .order_by(desc(FeedItemORM.date))
         )
 
-        query = self._filter_by_params(
-            query,
-            account_ids,
-            category_ids,
-            category_inside_chains
+        query = self._filter_by_params(query, filters)
+        
+        query = query.order_by(
+            desc(FeedItemORM.date),
+            desc(FeedItemORM.id)
         )
+        
+        query = query.limit(filters.limit + 1)
 
         result = await self.session.execute(query)
         return result.scalars().all()
