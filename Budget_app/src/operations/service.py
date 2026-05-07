@@ -150,6 +150,9 @@ class OperationService:
             user_id=user_id,
         )
 
+        if not operation:
+            raise OperationNotFoundError()
+
         if operation.chain_id:
             raise OperationInChainError()
         
