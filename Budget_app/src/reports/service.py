@@ -10,6 +10,7 @@ from src.reports.schemas import ReportResponse, CategoryWithTotal, GroupedCatego
 from src.common.enums import OperationType
 from src.categories.user_categories.models import UserCategory
 from src.feed.repository import FeedRepository
+from src.common.utils import get_month_boundaries
 
 class ReportService:
     def __init__(self, uow: IUnitOfWork):
@@ -64,25 +65,43 @@ class ReportService:
     ) -> ReportResponse:
         today = dt.date.today()
 
-        if not filters.date_from and not filters.date_to:
-            last_day, first_day = today, today - dt.timedelta(days=30)
-            filters.date_from = first_day
-            filters.date_to = last_day
+        if not filters.latest_month:
+            if not filters.date_from or not filters.date_to:
+                last_day, first_day = today, today - dt.timedelta(days=30)
+                filters.date_from = first_day
+                filters.date_to = last_day
+        else:
+            date_from, date_to = get_month_boundaries(today.year, today.month)
+            filters.date_from = date_from
+            filters.date_to = date_to
 
         grouped_data = await self.report_repo.get_report(
             filters=filters,
             user_id=user_id
         )
 
-        has_more = await self.feed_repo.get_max_date_before(
+        segregated_data = self.segregate_data(grouped_data)
+
+        has_more = False
+        next_start, next_end = None, None
+        max_past_date = await self.feed_repo.get_max_date_before(
             user_id=user_id,
             before_date=filters.date_from
         )
 
-        segregated_data = self.segregate_data(grouped_data)
+        if max_past_date:
+            has_more = True
+            next_start, next_end = get_month_boundaries(
+                max_past_date.year,
+                max_past_date.month
+            )
 
         return ReportResponse(
+            date_from=filters.date_from,
+            date_to=filters.date_to,
             incomes=segregated_data["incomes"],
             expenses=segregated_data["expenses"],
-            has_more=bool(has_more)
+            next_start=next_start,
+            next_end=next_end,
+            has_more=has_more
         )

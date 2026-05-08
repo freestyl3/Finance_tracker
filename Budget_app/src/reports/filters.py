@@ -8,6 +8,7 @@ from src.feed.models import FeedItemORM
 class ReportFilter(Filter):
     date_from: dt.date | None = Field(None, description="Начиная с этой даты")
     date_to: dt.date | None = Field(None, description="По эту дату включительно")
+    latest_month: bool | None = Field(None, description="Данные за последний месяц")
 
     class Constants(Filter.Constants):
         model = FeedItemORM

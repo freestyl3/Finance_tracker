@@ -33,6 +33,8 @@ class ReportRepository:
             FeedItemORM.ignore.is_(False)
         ).group_by(
             UserCategory.id
+        ).order_by(
+            func.sum(FeedItemORM.amount).label("amount").desc()
         )
 
         result = await self.session.execute(query)
