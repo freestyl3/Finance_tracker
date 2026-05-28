@@ -3,21 +3,23 @@ import uuid
 from fastapi import APIRouter, Response, Query
 
 from src.accounts.dependencies import AccountServiceDep
-from src.accounts.schemas import AccountRead, AccountCreate, AccountUpdate
+from src.accounts.schemas import (
+    AccountRead, AccountCreate, AccountUpdate, AccountCheckResponse
+)
 from src.auth.dependencies import CurrentUserID
 
 router = APIRouter()
 
-@router.post("/check_before_creation", response_model=list[AccountRead])
+@router.post("/check_before_creation", response_model=AccountCheckResponse)
 async def check_before_creation(
     account: AccountCreate,
     service: AccountServiceDep,
     user_id: CurrentUserID
 ):
-    return await service.check_deleted(
+    return await service.check_account_status(
         create_data=account,
         user_id=user_id
-    ) or Response(status_code=404)
+    )
 
 @router.patch("/restore/{account_id}", response_model=AccountRead)
 async def restore_account(

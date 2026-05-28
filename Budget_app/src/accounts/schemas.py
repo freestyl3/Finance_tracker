@@ -1,5 +1,6 @@
 from decimal import Decimal
 import uuid
+from typing import Literal
 
 from pydantic import Field, ConfigDict, BaseModel
 
@@ -26,3 +27,8 @@ class AccountCreate(BaseModel):
 
 class AccountUpdate(BaseModel):
     name: str = Field(max_length=255, description="Новое название счета")
+
+class AccountCheckResponse(BaseModel):
+    status: Literal["free", "active_exists", "archived_exists"]
+    active_account: AccountRead | None = None
+    archived_accounts: list[AccountRead] | None = None

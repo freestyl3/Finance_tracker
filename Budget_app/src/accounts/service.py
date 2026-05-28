@@ -9,6 +9,7 @@ from src.operations.repository import OperationRepository
 from src.common.enums import OperationType
 from src.core.uow import IUnitOfWork
 from src.accounts.exceptions import AccountNotFoundError
+from src.accounts.schemas import AccountCheckResponse
 
 class AccountService:
     def __init__(self, uow: IUnitOfWork):
@@ -77,16 +78,30 @@ class AccountService:
 
         return account
     
-    async def check_deleted(
+    async def check_account_status(
             self,
             create_data: AccountCreate,
             user_id: uuid.UUID
-    ) -> list[Account]:
-        return await self.acc_repo.get_all_by(
+    ) -> AccountCheckResponse:
+        accounts: list[Account] = await self.acc_repo.get_all_by(
             user_id=user_id,
-            **create_data.model_dump(exclude=["balance", ]),
-            is_active=False
-        ) or []
+            **create_data.model_dump(exclude=["balance", ])
+        )
+
+        if not accounts:
+            return AccountCheckResponse(status="free")
+        
+        active_account = next((acc for acc in accounts if acc.is_active), None)
+        if active_account:
+            return AccountCheckResponse(
+                status="active_exists",
+                active_account=active_account
+            )
+        
+        return AccountCheckResponse(
+            status="archived_exists",
+            archived_accounts=accounts
+        )
         
     async def restore(
             self,
