@@ -57,3 +57,4 @@ class ChainUpdate(BaseModel, OperationDateValidator):
     description: str | None = Field(None, description="Необязательное описание")
     category_id: uuid.UUID | None = Field(None, description="ID категории")
     date: dt.date | None = Field(None, description="Дата цепочки")
+    ignore: bool | None = Field(None, description="Скрытие цепочки")
