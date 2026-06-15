@@ -53,7 +53,7 @@ class AuthService:
 
         user = await self.user_repo.create(create_data)
         initial_categories_data = self._get_initial_categories_data(user.id)
-        await self.cat_repo.batch_create(initial_categories_data)
+        await self.cat_repo.batch_create(initial_categories_data, user_id=user.id)
 
         return user
 

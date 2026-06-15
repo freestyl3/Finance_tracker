@@ -239,7 +239,7 @@ class ChainService:
                  )
             
             new_category = await self._validate_and_get_category(
-                prev_category_id=chain.category,
+                prev_category=chain.category,
                 new_category_id=update_data["category_id"],
                 prev_amount=chain.amount,
                 delta=0,
