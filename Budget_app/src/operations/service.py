@@ -60,7 +60,7 @@ class OperationService:
             raise UserCategoryNotFoundError()
         
         return category
-        
+
     async def _update_account_balance(
             self,
             account_id: uuid.UUID,
@@ -109,6 +109,77 @@ class OperationService:
         operation.category = category
 
         return operation
+    
+    async def batch_create(
+            self,
+            operations: list[OperationCreate],
+            user_id: uuid.UUID
+    ) -> list[Operation]:
+        category_ids = set([op.category_id for op in operations])
+        account_ids = set([op.account_id for op in operations])
+
+        categories = await self.cat_repo.get_by_many_ids(
+            user_id=user_id,
+            ids=category_ids,
+            is_active=True
+        )
+
+        accounts = await self.acc_repo.get_by_many_ids(
+            user_id=user_id,
+            ids=account_ids,
+            is_active=True
+        )
+
+        category_map = {cat.id: cat for cat in categories}
+        account_map = {
+            acc.id : {
+                "account": acc,
+                "amount": 0
+            } for acc in accounts
+        }
+
+        operation_list = []
+
+        for operation in operations:
+            op_data = operation.model_dump(exclude_unset=True)
+
+            cat_id = operation.category_id
+            acc_id = operation.account_id
+
+            if cat_id not in category_map:
+                raise UserCategoryNotFoundError()
+            
+            if acc_id not in account_map:
+                raise AccountNotFoundError()
+            
+            category = category_map[cat_id]
+            
+            op_data["amount"] = self._validate_amount(
+                category_type=category.type,
+                amount=operation.amount
+            )
+
+            account_map[acc_id]["amount"] += op_data["amount"]
+            operation_list.append(op_data)
+
+        created_operations = await self.op_repo.batch_create(
+            create_data_list=operation_list,
+            user_id=user_id
+        )
+
+        for acc_id, data in account_map.items():
+            if data["amount"] != 0:
+                await self.acc_repo.update_balance(
+                    account_id=acc_id,
+                    delta=data["amount"],
+                    user_id=user_id
+                )
+
+        return await self.op_repo.get_operations_for_chain(
+            operation_ids=[op.id for op in created_operations],
+            user_id=user_id,
+            allow_free=True
+        )
 
     async def get_all(
             self,

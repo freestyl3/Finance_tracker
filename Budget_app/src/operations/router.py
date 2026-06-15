@@ -20,6 +20,14 @@ async def create_operation(
     user_id: CurrentUserID
 ):
     return await service.create(operation, user_id)
+
+@router.post("/batch_create", response_model=list[OperationRead])
+async def batch_create_operations(
+    operations: list[OperationCreate],
+    service: OperationServiceDep,
+    user_id: CurrentUserID
+):
+    return await service.batch_create(operations, user_id)
     
 @router.get("/", response_model=list[OperationRead])
 async def get_operations(

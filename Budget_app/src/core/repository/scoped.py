@@ -48,6 +48,18 @@ class UserScopedRepository(BaseRepository[ModelType]):
     ) -> Sequence[ModelType]:
         fields["user_id"] = user_id
         return await super().get_all_by(unique, *load_options, **fields)
+    
+    @override
+    async def get_by_many_ids(
+            self,
+            user_id: uuid.UUID,
+            ids: list[uuid.UUID],
+            unique: bool = False,
+            *load_options,
+            **fields
+    ) -> Sequence[ModelType]:
+        fields["user_id"] = user_id
+        return await super().get_by_many_ids(ids, unique, *load_options, **fields)
 
     @override
     async def exists_by(
