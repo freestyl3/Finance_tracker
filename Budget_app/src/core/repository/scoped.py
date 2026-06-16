@@ -107,3 +107,14 @@ class UserScopedRepository(BaseRepository[ModelType]):
     ) -> ModelType | None:
         fields["user_id"] = user_id
         return await super().delete(model_id, raise_if_not_found, **fields)
+    
+    @override
+    async def batch_delete(
+            self,
+            model_ids: list[uuid.UUID],
+            user_id: uuid.UUID,
+            raise_if_not_found: bool = False,
+            **fields
+    ) -> list[ModelType]:
+        fields["user_id"] = user_id
+        return await super().batch_delete(model_ids, raise_if_not_found, **fields)

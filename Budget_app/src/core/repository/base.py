@@ -259,3 +259,30 @@ class BaseRepository(Generic[ModelType]):
             raise self._not_found()
 
         return deleted
+    
+    async def batch_delete(
+        self,
+        model_ids: list[uuid.UUID],
+        raise_if_not_found: bool = False,
+        **fields
+    ) -> list[ModelType] | None:
+        query = (
+            delete(self.model)
+            .where(self.model.id.in_(model_ids))
+            .returning(self.model)
+        )
+
+        for key, value in fields.items():
+            if not hasattr(self.model, key):
+                raise ValueError(f"Model {self.model.__name__} doesn't have field {key}")
+
+            query = query.where(getattr(self.model, key) == value)
+
+        result = await self._execute(query, RepoAction.DELETE)
+        deleted = result.scalar_one_or_none()
+
+        if raise_if_not_found and deleted is None:
+            raise self._not_found()
+
+        return deleted
+
