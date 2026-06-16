@@ -96,6 +96,23 @@ class BaseRepository(Generic[ModelType]):
 
         return result.all()
     
+    async def get_by_many_ids(
+            self,
+            ids: list[uuid.UUID],
+            unique: bool = False,
+            *load_options,
+            **fields
+    ) -> Sequence[ModelType]:
+        query = self._prepare_select_query(*load_options, **fields)
+        query = query.where(self.model.id.in_(ids))
+
+        result = await self.session.scalars(query)
+
+        if unique:
+            result = result.unique()
+
+        return result.all()
+    
     async def exists_by(
             self,
             **filters
