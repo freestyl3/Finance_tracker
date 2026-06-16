@@ -1,5 +1,6 @@
 from typing import Generic, TypeVar
 import uuid
+import operator
 
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncResult
 from sqlalchemy.exc import IntegrityError
@@ -25,16 +26,53 @@ class BaseRepository(Generic[ModelType]):
     def _prepare_select_query(self, *load_options, **fields):
         query = select(self.model)
 
+        operators = {
+            "ge": operator.ge,       # >=
+            "le": operator.le,       # <=
+            "gt": operator.gt,        # >
+            "lt": operator.lt,        # <
+            "ne": operator.ne,        # !=
+        }
+
         for key, value in fields.items():
-            if not hasattr(self.model, key):
-                raise ValueError(f"Model {self.model.__name__} doesn't have field {key}")
+            if "__" in key:
+                field_name, suffix = key.split("__", 1)
+            else:
+                field_name, suffix = key, None
+
+            if not hasattr(self.model, field_name):
+                raise ValueError(f"Model {self.model.__name__} doesn't have field {field_name}")
             
-            query = query.where(getattr(self.model, key) == value)
+            model_field = getattr(self.model, field_name)
+
+            if suffix == "in":
+                query = query.where(model_field.in_(value))
+            elif suffix == "notin":
+                query = query.where(model_field.not_in(value))
+            elif suffix in operators:
+                query = query.where(operators[suffix](model_field, value))
+            elif suffix is None:
+                query = query.where(model_field == value)
+            else:
+                raise ValueError(f"Unsupported filter suffix '__{suffix}'")
 
         if load_options:
             query = query.options(*load_options)
 
         return query
+
+        # query = select(self.model)
+
+        # for key, value in fields.items():
+        #     if not hasattr(self.model, key):
+        #         raise ValueError(f"Model {self.model.__name__} doesn't have field {key}")
+            
+        #     query = query.where(getattr(self.model, key) == value)
+
+        # if load_options:
+        #     query = query.options(*load_options)
+
+        # return query
 
     async def _flush_orm(self, repo_action: RepoAction):
         try:
