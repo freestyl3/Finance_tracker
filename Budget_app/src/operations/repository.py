@@ -113,16 +113,16 @@ class OperationRepository(UserScopedRepository[Operation]):
         result = await self.session.scalars(query)
         return result.unique().all()
 
-    async def get_all_for_chain_update(self, user_id, chain_id, new_op_ids):
-        query = self._base_query(user_id).where(
-            or_(
-                Operation.chain_id == chain_id,
-                Operation.id.in_(new_op_ids)
-            )
-        )
+    # async def get_all_for_chain_update(self, user_id, chain_id, new_op_ids):
+    #     query = self._base_query(user_id).where(
+    #         or_(
+    #             Operation.chain_id == chain_id,
+    #             Operation.id.in_(new_op_ids)
+    #         )
+    #     )
 
-        result = await self.session.execute(query)
-        return result.scalars().unique().all()
+    #     result = await self.session.execute(query)
+    #     return result.scalars().unique().all()
     
     async def delete_chain_operations(
             self,

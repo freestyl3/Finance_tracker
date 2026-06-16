@@ -26,7 +26,8 @@ class AccountCreate(BaseModel):
     currency: Currency = Field(description="Валюта счета")
 
 class AccountUpdate(BaseModel):
-    name: str = Field(max_length=255, description="Новое название счета")
+    name: str | None = Field(None, max_length=255, description="Новое название счета")
+    balance: Decimal | None = Field(None, description="Значение баланса для корректировки")
 
 class AccountCheckResponse(BaseModel):
     status: Literal["free", "active_exists", "archived_exists"]

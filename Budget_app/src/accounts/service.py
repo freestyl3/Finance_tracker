@@ -115,7 +115,7 @@ class AccountService:
             },
             user_id=user_id
         )
-    
+
     async def get_all(
             self,
             user_id: uuid.UUID,
@@ -127,7 +127,7 @@ class AccountService:
                 is_active=is_active
             )
         )
-    
+
     async def update(
             self,
             account_id: uuid.UUID,
@@ -137,19 +137,40 @@ class AccountService:
         update_dict = update_data.model_dump(exclude_unset=True)
 
         if not update_dict:
-            account = self.acc_repo.get_one_by(
-                account_id=account_id,
+            account = await self.acc_repo.get_one_by(
+                id=account_id,
                 user_id=user_id
             )
 
             if not account:
                 raise AccountNotFoundError()
-            
+
             return account
+
+        if update_data.balance is not None:
+            account = await self.acc_repo.get_one_by(
+                id=account_id,
+                user_id=user_id
+            )
+
+            delta = update_data.balance - account.balance
+
+            if delta != 0:
+                category = await self._get_correction_category(delta, user_id)
+
+                await self.op_repo.create(
+                    {
+                        "amount": delta,
+                        "description": "Корректировка счета",
+                        "account_id": account.id,
+                        "category_id": category.id
+                    },
+                    user_id=user_id
+                )
 
         return await self.acc_repo.update(
             model_id=account_id,
-            update_data=update_data.model_dump(exclude_unset=True),
+            update_data=update_dict,
             user_id=user_id
         )
     
