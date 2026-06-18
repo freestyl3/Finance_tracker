@@ -28,6 +28,7 @@ class FeedItemORM(Base):
             Operation.ignore,
             Operation.account_id,
             Operation.category_id,
+            Operation.related_operation_id,
             Operation.user_id,
             literal_column("0", Integer).label("operations_count"),
             literal_column("'operation'", String).label("entry_type")
@@ -40,6 +41,7 @@ class FeedItemORM(Base):
             Chain.ignore,
             null().label("account_id"),
             Chain.category_id,
+            null().label("related_operation_id"),
             Chain.user_id,
             Chain.operations_count,
             literal_column("'chain'", String).label("entry_type")
