@@ -3,7 +3,7 @@ import datetime as dt
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select, literal_column, union_all, String, Integer, null
+from sqlalchemy import select, literal_column, union_all, String, Integer, null, case, or_, and_, not_
 from sqlalchemy.orm import Mapped, relationship
 
 from src.database.base import Base
@@ -31,8 +31,23 @@ class FeedItemORM(Base):
             Operation.related_operation_id,
             Operation.user_id,
             literal_column("0", Integer).label("operations_count"),
-            literal_column("'operation'", String).label("entry_type")
-        ).where(Operation.chain_id.is_(None)),
+            case(
+                (Operation.related_operation_id.is_not(None), literal_column("'transfer'", String)),
+                else_=literal_column("'operation'", String)
+            ).label("entry_type")
+        ).where(
+            or_(
+                and_(
+                    Operation.chain_id.is_(None),
+                    Operation.related_operation_id.is_(None)
+                ),
+                and_(
+                    Operation.chain_id.is_(None),
+                    Operation.related_operation_id.is_not(None),
+                    Operation.amount > 0
+                )
+            )
+        ),
         select(
             Chain.id,
             Chain.amount,
@@ -60,6 +75,7 @@ class FeedItemORM(Base):
     account_id: Mapped[uuid.UUID | None]
     category_id: Mapped[uuid.UUID | None]
     user_id: Mapped[uuid.UUID]
+    related_operation_id: Mapped[uuid.UUID | None]
     operations_count: Mapped[int]
     entry_type: Mapped[str]
 

@@ -33,12 +33,12 @@ class AccountService:
             user_id: uuid.UUID
     ):
         if amount > 0:
-            return await self.cat_repo.get_one_by(
+            return await self.cat_repo.get_or_create(
                 user_id=user_id,
                 name="__balance_correction__",
                 type=OperationType.INCOME
             )
-        return await self.cat_repo.get_one_by(
+        return await self.cat_repo.get_or_create(
                 user_id=user_id,
                 name="__balance_correction__",
                 type=OperationType.EXPENSE
