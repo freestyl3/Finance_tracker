@@ -70,17 +70,17 @@ class FeedRepository:
                 FeedItemORM.description.ilike(f"%{filters.search_query}%")
             )
 
-        if filters.cursor_date and filters.cursor_id:
+        if filters.date_from and filters.date_to:
             query = query.where(
-                or_(
-                    FeedItemORM.date < filters.cursor_date,
-                    and_(
-                        FeedItemORM.date == filters.cursor_date,
-                        FeedItemORM.id < filters.cursor_id
-                    )
-                )
+                FeedItemORM.date.between(filters.date_from, filters.date_to)
             )
 
+        if filters.cursor_date and filters.cursor_id:
+            query = query.where(
+                FeedItemORM.date <= filters.cursor_date,
+                FeedItemORM.id <= filters.cursor_id
+            )
+        
         return query
 
     async def get_monthly_feed(
@@ -90,15 +90,11 @@ class FeedRepository:
     ) -> Sequence[FeedItemORM]:
         query = (
             select(FeedItemORM)
-            .where(
-                FeedItemORM.user_id == user_id,
-                FeedItemORM.date.between(filters.date_from, filters.date_to),
-            )
+            .where(FeedItemORM.user_id == user_id,)
             .options(
                 joinedload(FeedItemORM.account),
                 joinedload(FeedItemORM.category),
             )
-            .order_by(desc(FeedItemORM.date))
         )
 
         query = self._filter_by_params(query, filters)

@@ -150,6 +150,18 @@ class BaseRepository(Generic[ModelType]):
             result = result.unique()
 
         return result.all()
+
+    async def get_or_create(
+            self,
+            unique: bool = True,
+            *load_options,
+            **fields
+    ) -> ModelType:
+        obj = await self.get_one_by(unique, *load_options, **fields)
+
+        return obj or await self.create(
+            create_data=fields
+        )
     
     async def exists_by(
             self,

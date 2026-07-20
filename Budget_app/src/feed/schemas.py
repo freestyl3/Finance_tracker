@@ -21,7 +21,12 @@ class FeedItemBase(BaseModel):
 
 class FeedOperation(FeedItemBase):
     entry_type: Literal["operation"] = "operation"
-    account: AccountRead 
+    account: AccountRead
+
+class FeedTransfer(FeedItemBase):
+    entry_type: Literal["transfer"] = "transfer"
+    account_from: AccountRead
+    account_to: AccountRead
 
 class FeedChain(FeedItemBase):
     entry_type: Literal["chain"] = "chain"
@@ -29,7 +34,7 @@ class FeedChain(FeedItemBase):
     operations: list[OperationRead]
 
 FeedItem = Annotated[
-    Union[FeedOperation, FeedChain],
+    Union[FeedOperation, FeedChain, FeedTransfer],
     Field(discriminator="entry_type")
 ]
 
@@ -37,6 +42,3 @@ class FeedResponse(BaseModel):
     items: list[FeedItem]
     next_cursor_date: dt.date | None
     next_cursor_id: uuid.UUID | None
-    has_more: bool
-    next_start: dt.date | None
-    next_end: dt.date | None
