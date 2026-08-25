@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from pydantic import Field, field_validator, BaseModel, ConfigDict
 
-from src.categories.base.schemas import CategoryRead
+from src.categories.user_categories.schemas import UserCategoryRead
 from src.accounts.schemas import AccountRead
 
 class OperationDateValidator:
@@ -50,7 +50,7 @@ class OperationRead(OperationBase):
     id: uuid.UUID
     amount: Decimal
     ignore: bool
-    category: CategoryRead
+    category: UserCategoryRead
     account: AccountRead
     chain_id: uuid.UUID | None
 

@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from src.common.enums import OperationType
 from src.operations.schemas import OperationDateValidator
-from src.categories.base.schemas import CategoryRead
+from src.categories.user_categories.schemas import UserCategoryRead
 from src.operations.schemas import OperationRead
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ class ChainCreate(BaseModel, OperationDateValidator):
 class ChainShortRead(BaseModel):
     id: uuid.UUID
     amount: Decimal
-    category: CategoryRead | None =Field(None)
+    category: UserCategoryRead | None =Field(None)
     ignore: bool
     date: dt.date
     description: str | None = Field(None)

@@ -5,14 +5,16 @@ from sqlalchemy import select, func, desc, Select, or_, and_, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from src.core.repository.scoped import UserScopedRepository
 from src.feed.models import FeedItemORM
 from src.operations.models import Operation
 from src.categories.user_categories.models import UserCategory
 from src.feed.filters import FeedFilter
 
-class FeedRepository:
+class FeedRepository(UserScopedRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
+        self.model = FeedItemORM
 
     def _filter_by_params(self, query: Select, filters: FeedFilter) -> Select:
         if filters.type:

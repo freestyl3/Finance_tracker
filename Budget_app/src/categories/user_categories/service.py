@@ -3,7 +3,7 @@ import uuid
 from src.core.uow import IUnitOfWork
 from src.categories.user_categories.exceptions import UserCategoryAlreadyExistsError
 from src.categories.user_categories.repository import UserCategoryRepository
-from src.operations.repository import OperationRepository
+from src.feed.repository import FeedRepository
 from src.categories.base.schemas import (
     CategoryCreate, GroupedAvailableCategories, CategoryUpdate
 )
@@ -20,8 +20,8 @@ class UserCategoryService:
         return self.uow.get_repo(UserCategoryRepository)
     
     @property
-    def op_repo(self) -> OperationRepository:
-        return self.uow.get_repo(OperationRepository)
+    def feed_repo(self) -> FeedRepository:
+        return self.uow.get_repo(FeedRepository)
 
     async def create(
             self,
@@ -145,7 +145,7 @@ class UserCategoryService:
             category_id: uuid.UUID,
             user_id: uuid.UUID
     ) -> bool:
-        operations_exists = await self.op_repo.exists_by(
+        operations_exists = await self.feed_repo.exists_by(
             user_id=user_id,
             category_id=category_id
         )

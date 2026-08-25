@@ -246,12 +246,10 @@ class ChainService:
                 user_id=user_id
             )
 
-            new_category_id = None
             if new_category:
-                new_category_id = new_category.id
-
-            update_data["category_id"] = new_category_id
-                    
+                category = new_category
+                update_data["category_id"] = category.id
+        
         updated = await self.chain_repo.update(
             model_id=chain_id,
             update_data=update_data,
