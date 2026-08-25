@@ -8,6 +8,7 @@ from src.categories.base.schemas import (
     CategoryCreate, GroupedAvailableCategories, CategoryUpdate
 )
 from src.categories.user_categories.models import UserCategory
+from src.categories.user_categories.schemas import DeleteUserCategoryResponse
 from src.categories.system_categories.models import SystemCategory
 from src.common.enums import OperationType
 
@@ -144,21 +145,22 @@ class UserCategoryService:
             self,
             category_id: uuid.UUID,
             user_id: uuid.UUID
-    ) -> bool:
-        operations_exists = await self.feed_repo.exists_by(
+    ) -> DeleteUserCategoryResponse:
+        entities_exists = await self.feed_repo.exists_by(
             user_id=user_id,
             category_id=category_id
         )
+        status = "archived" if entities_exists else "deleted"
 
-        if not operations_exists:
+        if not entities_exists:
             await self.cat_repo.delete(
                 model_id=category_id,
                 user_id=user_id
             )
-            return True
 
         await self.soft_delete(
             category_id=category_id,
             user_id=user_id
         )
-        return True
+        
+        return DeleteUserCategoryResponse(status=status)

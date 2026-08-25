@@ -3,7 +3,9 @@ import uuid
 from fastapi import APIRouter, Response
 
 from src.categories.base.schemas import CategoryCreate, CategoryUpdate
-from src.categories.user_categories.schemas import UserCategoryRead
+from src.categories.user_categories.schemas import (
+    UserCategoryRead, DeleteUserCategoryResponse
+)
 from src.categories.user_categories.dependecies import UserCategoryServiceDep
 from src.auth.dependencies import CurrentUserID
 from src.categories.base.schemas import GroupedAvailableCategories
@@ -49,11 +51,10 @@ async def update_user_category(
 ):
     return await service.update(category_id, category_update, user_id)
 
-@router.delete("/{category_id}")
+@router.delete("/{category_id}", response_model=DeleteUserCategoryResponse)
 async def delete_user_category(
     category_id: uuid.UUID,
     service: UserCategoryServiceDep,
     user_id: CurrentUserID
 ):
-    await service.delete(category_id, user_id)
-    return Response(status_code=204)
+    return await service.delete(category_id, user_id)
