@@ -6,7 +6,7 @@ import datetime as dt
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.accounts.schemas import AccountRead
-from src.categories.base.schemas import CategoryRead
+from src.categories.user_categories.schemas import UserCategoryRead
 from src.operations.schemas import OperationRead
 
 class FeedItemBase(BaseModel):
@@ -15,7 +15,7 @@ class FeedItemBase(BaseModel):
     date: dt.date
     description: str | None
     ignore: bool
-    category: CategoryRead | None 
+    category: UserCategoryRead | None 
 
     model_config = ConfigDict(from_attributes=True)
 
