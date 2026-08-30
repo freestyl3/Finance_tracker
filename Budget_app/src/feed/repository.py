@@ -76,12 +76,6 @@ class FeedRepository(UserScopedRepository):
             query = query.where(
                 FeedItemORM.date.between(filters.date_from, filters.date_to)
             )
-
-        if filters.cursor_date and filters.cursor_id:
-            query = query.where(
-                FeedItemORM.date <= filters.cursor_date,
-                FeedItemORM.id <= filters.cursor_id
-            )
         
         return query
 
@@ -105,8 +99,11 @@ class FeedRepository(UserScopedRepository):
             desc(FeedItemORM.date),
             desc(FeedItemORM.id)
         )
-        
+
         query = query.limit(filters.limit + 1)
+        
+        if filters.offset:
+            query = query.offset(filters.offset * filters.limit)
 
         result = await self.session.execute(query)
         return result.scalars().all()

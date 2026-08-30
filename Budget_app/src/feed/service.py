@@ -1,5 +1,6 @@
 import uuid
 from collections import defaultdict
+from datetime import datetime
 
 from src.core.uow import IUnitOfWork
 from src.feed.repository import FeedRepository
@@ -9,6 +10,7 @@ from src.feed.models import FeedItemORM
 from src.feed.schemas import FeedItem
 from src.feed.filters import FeedFilter
 from src.operations.models import Operation
+from src.common.utils import get_month_boundaries
 
 class FeedService:
     def __init__(self, uow: IUnitOfWork):
@@ -63,23 +65,36 @@ class FeedService:
             filters: FeedFilter
     ) -> FeedResponse:
         if not(filters.date_from and filters.date_to):
-            filters.date_from = None
-            filters.date_to = None
+            today_date = datetime.today()
+            filters.date_from, filters.date_to = get_month_boundaries(
+                today_date.year,
+                today_date.month
+            )
 
-        items = await self.feed_repo.get_monthly_feed(
+        items: list[FeedItemORM] = await self.feed_repo.get_monthly_feed(
             user_id=user_id,
             filters=filters
         )
 
-        next_cursor_date = None
-        next_cursor_id = None
+        date_from, date_to = None, None
+
         if len(items) > filters.limit:
             last_item = items[-1]
-            next_cursor_date = last_item.date
-            next_cursor_id = last_item.id
+            filters.offset += 1
+            next_date = last_item.date
             items = items[:-1]
-
-        print(items[0].amount, items[0].entry_type)
+        else:
+            filters.offset = None
+            max_date = filters.date_from
+            if items:
+                max_date = items[-1].date
+            next_date = await self.feed_repo.get_max_date_before(user_id, max_date)
+        
+        if next_date:
+            date_from, date_to = get_month_boundaries(
+                next_date.year,
+                next_date.month
+            )
 
         chain_ids = [i.id for i in items if i.entry_type == "chain"]
         target_transfer_ids = [
@@ -99,11 +114,6 @@ class FeedService:
         )
 
         transfers_dict = dict(zip(target_transfer_ids, transfers))
-
-        # transfers = await self._get_transfers(
-        #     transfer_operations=transfer_operations,
-        #     user_id=user_id
-        # )
         
         prepared_items = self._validate_for_response(
             feed_items=items,
@@ -113,6 +123,7 @@ class FeedService:
 
         return FeedResponse(
             items=prepared_items,
-            next_cursor_date=next_cursor_date,
-            next_cursor_id=next_cursor_id
+            date_from=date_from,
+            date_to=date_to,
+            offset=filters.offset
         )

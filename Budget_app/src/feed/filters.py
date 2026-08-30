@@ -21,8 +21,7 @@ class FeedFilter(Filter):
     search_query: str | None = Field(None, description="Поиск по описанию")
 
     limit: int = Field(100, ge=1, le=100, description="Количество записей")
-    cursor_date: dt.date | None = Field(None, description="Дата последнего элемента с прошлой страницы")
-    cursor_id: uuid.UUID | None = Field(None, description="ID последнего элемента с прошлой страницы")
+    offset: int | None = Field(0, ge=0, description="Сдвиг")
 
     class Constants(Filter.Constants):
         model = FeedItemORM

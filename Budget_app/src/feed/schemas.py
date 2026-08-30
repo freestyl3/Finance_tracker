@@ -40,5 +40,6 @@ FeedItem = Annotated[
 
 class FeedResponse(BaseModel):
     items: list[FeedItem]
-    next_cursor_date: dt.date | None
-    next_cursor_id: uuid.UUID | None
+    date_from: dt.date | None
+    date_to: dt.date | None
+    offset: int | None
